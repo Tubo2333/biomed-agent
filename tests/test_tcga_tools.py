@@ -4,15 +4,10 @@
 # task-data-type mapping, CacheMissError propagation.
 
 import pytest
-from pathlib import Path
-import json
-import tempfile
-import os
 
 from src.tools.tcga_tools import (
     TCGADataAccessor,
     CacheMissError,
-    METHOD_COMPATIBILITY,
     TASK_DATA_TYPES,
     SAMPLE_SIZE_CONSTRAINTS,
     INVALID_COMBINATIONS,

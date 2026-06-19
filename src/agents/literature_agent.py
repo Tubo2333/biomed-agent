@@ -7,8 +7,7 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from src.llm.client import LLMClient, LLMError
 from src.rag.retriever import PubMedRetriever
@@ -17,9 +16,7 @@ from src.rag.synthesizer import EvidenceSynthesizer
 from src.rag.hypothesis_generator import HypothesisGenerator
 from src.agents.question_decomposer import decompose_question
 from src.tools.pubmed_tools import (
-    ToolDef,
     create_pubmed_tools,
-    get_pubmed_tool_schemas,
 )
 from src.types import (
     LiteratureReview,

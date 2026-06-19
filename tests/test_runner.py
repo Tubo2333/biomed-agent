@@ -1,11 +1,10 @@
 """Tests for BiomedBenchmark runner (structural checks — full run needs LLM)."""
 
-import pytest
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from benchmark.runner import BiomedBenchmark, BenchmarkResult, _coerce_list
+from benchmark.runner import BiomedBenchmark, _coerce_list
 from benchmark.types import AgentEvalMetrics
 
 

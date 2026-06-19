@@ -1,13 +1,12 @@
 """Tests for LiteratureAgent (structural — full run needs LLM)."""
 
-import pytest
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.agents.literature_agent import LiteratureAgent
 from src.llm.client import LLMClient
-from src.benchmark.types import BenchmarkTask, EvalAgent
+from src.benchmark.types import BenchmarkTask
 
 
 class TestLiteratureAgentStructural:
@@ -22,7 +21,7 @@ class TestLiteratureAgentStructural:
     def test_accepts_benchmark_task(self):
         """LiteratureAgent.run() accepts BenchmarkTask for S2 integration."""
         agent = LiteratureAgent(LLMClient(model="test", temperature=0.3))
-        task = BenchmarkTask(
+        _task = BenchmarkTask(
             task_id="T1-LIT", task_name="Test Literature Review",
             description="Review CSTB in CRC",
             input={"question": "CSTB in colorectal cancer prognosis"},

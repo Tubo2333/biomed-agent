@@ -18,7 +18,6 @@ All single-cohort results are labeled "exploratory, conditional on TCGA-COAD".
 import json
 import os
 from pathlib import Path
-from typing import Any
 
 from .types import BenchmarkTask
 

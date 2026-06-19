@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Optional
 
 from src.utils.network import check_proxy, is_proxy_configured
@@ -126,7 +126,6 @@ class LLMClient:
         self._ensure_client()
 
         try:
-            import anthropic
 
             kwargs: dict[str, Any] = {
                 "model": model or self._model,

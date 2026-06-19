@@ -1,14 +1,12 @@
 """Tests for metrics computation engine."""
 
-import pytest
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from benchmark.metrics import (
-    compute_completion, compute_tool_selection, compute_correctness,
-    compute_safety, apply_safety_penalty, compute_overall,
-    WEIGHTS, SAFETY_KNEE,
+    compute_completion, compute_safety, apply_safety_penalty, compute_overall,
+    WEIGHTS,
 )
 from benchmark.types import BenchmarkTask
 

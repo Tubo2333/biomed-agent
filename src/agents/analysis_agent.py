@@ -179,7 +179,6 @@ class AnalysisAgent:
     ) -> AnalysisResult:
         """Execute a single DAG node through Think→Act→Observe."""
         param_retries = 0
-        last_error: Optional[Exception] = None
 
         while param_retries <= MAX_PARAM_RETRIES:
             try:
@@ -233,7 +232,6 @@ class AnalysisAgent:
             except (ValueError, KeyError) as e:
                 # F2: Parameter error — try fallback
                 param_retries += 1
-                last_error = e
                 if param_retries <= MAX_PARAM_RETRIES:
                     logger.info(
                         "F2: %s — retry %d/%d with fallback",
@@ -293,8 +291,6 @@ class AnalysisAgent:
         self, node: AnalysisNode, upstream: dict, retry_count: int
     ) -> dict:
         """LLM Think phase: select tool and parameters."""
-        tools_desc = self._describe_tools()
-
         upstream_summary = json.dumps(
             {nid: list(out.keys()) for nid, out in upstream.items()},
             ensure_ascii=False,

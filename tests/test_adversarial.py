@@ -4,7 +4,6 @@
 # Tests the anti-hallucination defence layers through controlled injection.
 
 import pytest
-from pathlib import Path
 
 from src.types import LiteratureReview, EvidenceLink, Hypothesis
 from src.agents.s3_types import (
@@ -102,7 +101,7 @@ class TestBlockerConditions:
 
     def test_tc1_empty_evidence_chain(self):
         """TC1: Empty evidence_chain → blocked at dataclass level (LiteratureReview.__post_init__)."""
-        from src.types import LiteratureReview, EvidenceLink
+        from src.types import LiteratureReview
         with pytest.raises(ValueError, match="evidence_chain"):
             LiteratureReview(
                 query="test", papers_retrieved=0, papers_relevant=[],

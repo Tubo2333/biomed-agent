@@ -7,7 +7,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.types import (
     Paper, LiteratureReview, EvidenceLink, Hypothesis,
-    SearchQuery, SearchResult, RerankResult, RetrievalGate,
     make_evidence_link, make_hypothesis,
     degradation_evidence_link, degradation_hypothesis,
 )

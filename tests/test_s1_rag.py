@@ -1,17 +1,15 @@
 """Tests for Step 1 RAG modules (structural — full run needs LLM + PubMed)."""
 
-import pytest
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.types import Paper, SearchQuery, SearchResult, EvidenceLink, Hypothesis
 from src.rag.embedder import Embedder, LLMRerank
 from src.rag.synthesizer import EvidenceSynthesizer
 from src.rag.hypothesis_generator import HypothesisGenerator
 from src.tools.pubmed_tools import ToolDef, create_pubmed_tools, get_pubmed_tool_schemas
-from src.utils.network import check_proxy, NetworkError
-from src.llm.client import LLMClient, LLMResponse
+from src.utils.network import check_proxy
+from src.llm.client import LLMClient
 
 
 class TestToolDef:

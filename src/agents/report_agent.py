@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 import logging
 import math
-from typing import Any
 
 from src.llm.client import LLMClient, LLMError
 from src.types import LiteratureReview

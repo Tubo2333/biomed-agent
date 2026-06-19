@@ -1,14 +1,13 @@
 """Tests for hallucination detection (V1/V2/V3 + P0-4 validation)."""
 
-import pytest
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from benchmark.hallucination import (
     detect, validate_detector, _extract_pmids, _verify_genes,
-    _check_statistics, classify_borderline, METHODS_WHITELIST,
-    _NON_GENE_ACRONYMS, STAT_SANITY,
+    _check_statistics, METHODS_WHITELIST,
+    _NON_GENE_ACRONYMS,
 )
 from benchmark.types import BenchmarkTask
 
@@ -146,7 +145,7 @@ class TestMethodClaimVerification:
         )
         mismatches = [
             f for f in report.hard_rule_flags
-            if f.get("method_verified") == False
+            if f.get("method_verified") is False
         ]
         assert len(mismatches) == 0
 
@@ -158,7 +157,7 @@ class TestMethodClaimVerification:
         )
         mismatches = [
             f for f in report.hard_rule_flags
-            if f.get("method_verified") == False
+            if f.get("method_verified") is False
         ]
         assert len(mismatches) == 1
         assert "not matched" in mismatches[0]["note"]

@@ -6,8 +6,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from benchmark.tasks import (
-    load_all_tasks, make_t1_lit_tasks, make_t2_gda_tasks,
-    make_t3_deg_tasks, make_t4_surv_tasks, make_t5_drug_tasks,
+    load_all_tasks, make_t2_gda_tasks,
     TOLERANCE_BANDS, _check_tolerance, _check_direction,
 )
 from benchmark.types import BenchmarkTask

@@ -8,12 +8,10 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import Optional
 
 from src.llm.client import LLMClient, LLMError
 from src.types import (
     EvidenceLink,
-    Hypothesis,
     Paper,
     degradation_evidence_link,
     make_evidence_chain,

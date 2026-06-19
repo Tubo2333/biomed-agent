@@ -8,14 +8,13 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import os
 import urllib.parse
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Optional
 
 from src.types import Paper, SearchQuery, SearchResult
-from src.utils.network import NetworkError, fetch_with_retry
+from src.utils.network import fetch_with_retry
 
 logger = logging.getLogger(__name__)
 

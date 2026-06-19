@@ -21,7 +21,7 @@ from .types import (
 )
 from .tasks import load_all_tasks
 from .metrics import compute_completion, compute_tool_selection, compute_correctness, compute_overall
-from .hallucination import detect as detect_hallucination, validate_detector
+from .hallucination import detect as detect_hallucination
 from .contamination import assess_contamination_risk
 
 # ──────────────────────────────────────────────────────────────

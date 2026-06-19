@@ -15,7 +15,6 @@ import json
 import csv
 import io
 from dataclasses import dataclass, field
-from typing import Any
 
 from .types import AgentEvalMetrics, ContaminationRiskReport
 

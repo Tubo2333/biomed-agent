@@ -1,0 +1,119 @@
+<h2>Step 2 整体架构：Benchmark 系统的 8 个模块</h2>
+<p class="subtitle">文件清单、依赖关系、与其他 Step 的接口</p>
+
+<div class="section">
+  <h3>模块全景图（共 8 个代码文件 + data/）</h3>
+  <pre style="background:#1a1a2e;color:#e0e0e0;padding:16px;border-radius:8px;font-size:13px;line-height:1.6">
+biomed-agent/
+├── src/
+│   ├── benchmark/
+│   │   ├── <strong style="color:#00B07C">types.py</strong>          # BenchmarkTask / AgentEvalMetrics / EvalAgent Protocol
+│   │   ├── <strong style="color:#0395D8">tasks.py</strong>          # 5 个 Task 定义 + Ground Truth 加载器
+│   │   ├── <strong style="color:#0395D8">metrics.py</strong>         # 4 维 Metrics 计算引擎
+│   │   ├── <strong style="color:#0395D8">runner.py</strong>          # BiomedBenchmark: 遍历 Task×Agent → 产报告
+│   │   ├── <strong style="color:#E84040">hallucination.py</strong>    # 硬规则 + 软分级 幻觉检测器
+│   │   ├── <strong style="color:#8B5CF6">baselines.py</strong>       # B1/B2/B3/B4 Agent 实现
+│   │   ├── <strong style="color:#F59E0B">scorer.py</strong>          # 人工评分模板 + 自动评分协调
+│   │   └── <strong style="color:#EC4899">reporter.py</strong>         # 结果聚合 + JSON/CSV 导出
+├── data/
+│   └── benchmark/
+│       └── ground_truth/     # 每个 Task 的 gt JSON 文件
+└── results/
+    ├── benchmark_v1.json     # 完整结果
+    └── benchmark_comparison.csv
+  </pre>
+</div>
+
+<div class="section">
+  <h3>模块依赖关系（箭头 = "imports from"）</h3>
+  <pre style="background:#1a1a2e;color:#e0e0e0;padding:16px;border-radius:8px;font-size:13px;line-height:1.6">
+                    types.py  (零依赖，定义 dataclass + Protocol)
+                   /    |    \
+                  /     |     \
+          tasks.py  metrics.py  hallucination.py
+            |          |            |
+            +-----+----+            |
+                  |                 |
+               runner.py            |
+               /      \            |
+        baselines.py  scorer.py    |
+               \        /         /
+                reporter.py ------
+                     |
+               [外部消费: Step 4, Step 5]
+  </pre>
+</div>
+
+<div class="section">
+  <h3>与其他 Step 的接口</h3>
+  <table style="width:100%;border-collapse:collapse">
+    <tr style="background:#1a1a2e;color:#e0e0e0">
+      <th style="padding:8px;text-align:left">方向</th>
+      <th style="padding:8px;text-align:left">消费/导出</th>
+      <th style="padding:8px;text-align:left">具体内容</th>
+    </tr>
+    <tr style="background:#16213e">
+      <td style="padding:8px;color:#0395D8">← 消费 S1</td>
+      <td style="padding:8px">类型 + Agent</td>
+      <td style="padding:8px;font-size:13px">Paper / LiteratureReview / Hypothesis 类型<br>LiteratureAgent.run() 方法</td>
+    </tr>
+    <tr style="background:#1a1a2e">
+      <td style="padding:8px;color:#00B07C">→ 导出 S3</td>
+      <td style="padding:8px">类型 + Protocol + Runner</td>
+      <td style="padding:8px;font-size:13px">BenchmarkTask / AgentEvalMetrics 类型<br>EvalAgent Protocol<br>BiomedBenchmark runner</td>
+    </tr>
+    <tr style="background:#16213e">
+      <td style="padding:8px;color:#E84040">→ 导出 S4</td>
+      <td style="padding:8px">实验数据</td>
+      <td style="padding:8px;font-size:13px">benchmark_v1.json（全部定量结果）<br>详细评估日志</td>
+    </tr>
+  </table>
+</div>
+
+<div class="section">
+  <h3>4 个 Baseline 的变量控制设计</h3>
+  <table style="width:100%;border-collapse:collapse">
+    <tr style="background:#1a1a2e;color:#e0e0e0">
+      <th style="padding:8px;text-align:left"></th>
+      <th style="padding:8px;text-align:center">Tool Calling</th>
+      <th style="padding:8px;text-align:center">检索增强</th>
+      <th style="padding:8px;text-align:center">多轮+证据链</th>
+      <th style="padding:8px;text-align:center">领域 Prompt</th>
+    </tr>
+    <tr style="background:#16213e">
+      <td style="padding:8px">B1 Naive LLM</td>
+      <td style="padding:8px;text-align:center;color:#E84040">❌</td>
+      <td style="padding:8px;text-align:center;color:#E84040">❌</td>
+      <td style="padding:8px;text-align:center;color:#E84040">❌</td>
+      <td style="padding:8px;text-align:center;color:#E84040">❌</td>
+    </tr>
+    <tr style="background:#1a1a2e">
+      <td style="padding:8px">B2 ReAct</td>
+      <td style="padding:8px;text-align:center;color:#00B07C">✅</td>
+      <td style="padding:8px;text-align:center;color:#E84040">❌</td>
+      <td style="padding:8px;text-align:center;color:#E84040">❌</td>
+      <td style="padding:8px;text-align:center;color:#E84040">❌</td>
+    </tr>
+    <tr style="background:#16213e">
+      <td style="padding:8px">B3 Simple RAG</td>
+      <td style="padding:8px;text-align:center;color:#00B07C">✅</td>
+      <td style="padding:8px;text-align:center;color:#00B07C">✅ (单轮)</td>
+      <td style="padding:8px;text-align:center;color:#E84040">❌</td>
+      <td style="padding:8px;text-align:center;color:#E84040">❌</td>
+    </tr>
+    <tr style="background:#16213e">
+      <td style="padding:8px;color:#F59E0B">B4 Domain ReAct (<strong>新增</strong>)</td>
+      <td style="padding:8px;text-align:center;color:#00B07C">✅</td>
+      <td style="padding:8px;text-align:center;color:#E84040">❌</td>
+      <td style="padding:8px;text-align:center;color:#E84040">❌</td>
+      <td style="padding:8px;text-align:center;color:#00B07C">✅</td>
+    </tr>
+    <tr style="background:#1a1a2e">
+      <td style="padding:8px;color:#00B07C">LiteratureAgent</td>
+      <td style="padding:8px;text-align:center;color:#00B07C">✅</td>
+      <td style="padding:8px;text-align:center;color:#00B07C">✅ (多轮)</td>
+      <td style="padding:8px;text-align:center;color:#00B07C">✅</td>
+      <td style="padding:8px;text-align:center;color:#00B07C">✅</td>
+    </tr>
+  </table>
+</div>

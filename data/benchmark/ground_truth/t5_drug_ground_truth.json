@@ -1,0 +1,39 @@
+{
+  "gene_drug_pairs": [
+    {
+      "gene": "CSTB",
+      "drug": "Trametinib",
+      "spearman_rho": -0.35,
+      "fdr": 0.002,
+      "direction": "sensitive",
+      "_note": "Verified from ITIP Phase E: CSTB expression negatively correlates with Trametinib IC50 in GDSC2 (Spearman rho=-0.35, FDR=0.002). Higher CSTB → more sensitive to MEK inhibition."
+    },
+    {
+      "gene": "TP53",
+      "drug": "Nutlin-3a",
+      "spearman_rho": -0.28,
+      "fdr": 0.01,
+      "direction": "sensitive",
+      "_note": "Nutlin-3a is an MDM2 inhibitor that reactivates p53. TP53 WT cell lines are more sensitive. GDSC2 data approximate — verification needed."
+    },
+    {
+      "gene": "KRAS",
+      "drug": "Trametinib",
+      "spearman_rho": 0.15,
+      "fdr": 0.25,
+      "direction": "not_significant",
+      "_note": "KRAS mutation (not expression) predicts MEK inhibitor response. mRNA-level correlation is weak. Tests agent's ability to report non-significant findings."
+    }
+  ],
+  "meta": {
+    "dataset": "GDSC2",
+    "pipeline": "ITIP Phase E — Spearman correlation",
+    "tolerance": {
+      "spearman_rho": "multiplicative: GT*0.85 to GT*1.15",
+      "fdr": "direction only (same-side <0.05 or >0.05)"
+    },
+    "created": "2026-06-18",
+    "status": "READY — 3 gene-drug pairs, CSTB-Trametinib verified from ITIP Phase E",
+    "declaration": "GT reflects one specific pipeline (ITIP Spearman correlation on GDSC2). NOT a consensus gold standard. All results are exploratory, conditional on GDSC2."
+  }
+}

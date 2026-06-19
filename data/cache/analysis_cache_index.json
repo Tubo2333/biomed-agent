@@ -1,0 +1,25 @@
+{
+  "datasets": {
+    "TCGA-COAD": {
+      "expression_matrix": "D:/C-file/itip_p1/data/tcga/tcga_expression_symbol.rds",
+      "survival_data": "D:/C-file/itip_p1/data/tcga/tcga_clinical.rds",
+      "genes_cached": ["CSTB"],
+      "analyses_available": {
+        "differential_expression": {
+          "file": "D:/C-file/biomed-agent/data/cache/tcga_coad_deg.json",
+          "columns": ["gene", "cancer", "log2FC", "p_value", "t_stat", "p_adj", "n_tumor", "n_normal"],
+          "dtypes": {"gene": "str", "cancer": "str", "log2FC": "float64", "p_value": "float64", "t_stat": "float64", "p_adj": "float64", "n_tumor": "int", "n_normal": "int"},
+          "cached_at": "2026-06-19T12:00:00",
+          "source_script": "D:/C-file/CSTB_paper/results/module1_expression/tables/expression_diff.csv"
+        },
+        "survival_analysis": {
+          "file": "D:/C-file/biomed-agent/data/cache/tcga_coad_surv.json",
+          "columns": ["gene", "cancer", "cox_hr", "cox_ci_lower", "cox_ci_upper", "cox_p", "logrank_p", "n", "n_events"],
+          "dtypes": {"gene": "str", "cancer": "str", "cox_hr": "float64", "cox_ci_lower": "float64", "cox_ci_upper": "float64", "cox_p": "float64", "logrank_p": "float64", "n": "int", "n_events": "int"},
+          "cached_at": "2026-06-19T12:00:00",
+          "source_script": "D:/C-file/CSTB_paper/results/module2_prognosis/tables/prognosis_summary.csv"
+        }
+      }
+    }
+  }
+}

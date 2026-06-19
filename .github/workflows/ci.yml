@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - run: ruff check src/ tests/ --ignore=E501
+
+  test-structural:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pandas scipy requests pytest
+      - run: |
+          python -m pytest tests/ -v --tb=short \
+            --ignore=tests/test_s1_agent.py \
+            --ignore=tests/test_s1_rag.py \
+            --ignore=tests/test_runner.py \
+            --ignore=tests/test_adversarial.py \
+            -k "not LLM and not integration"
+        env:
+          SKIP_LLM_TESTS: "1"
+
+  test-types:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install numpy
+      - run: python -m pytest tests/test_s1_types.py tests/test_tasks.py tests/test_metrics.py tests/test_hallucination.py tests/test_contamination.py -v --tb=short

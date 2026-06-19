@@ -1,0 +1,105 @@
+<h2>问题 4：Pipeline 固定顺序 vs 可扩展 DAG</h2>
+<p class="subtitle">4 Agent 串行够不够？OrchestrationAgent 内部的 DAG 能多灵活？</p>
+
+<div class="section">
+  <h3>两个层级的设计决定</h3>
+</div>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">外层：Pipeline 编排器 — 固定 4 Agent 串行</div>
+    <div class="mockup-body">
+      <div style="font-family:monospace;font-size:13px;line-height:1.8;">
+        <div style="background:#e3f2fd;padding:6px 10px;border-radius:3px;margin:3px 0;">
+          <strong>Phase 1:</strong> LiteratureAgent.run(question)
+        </div>
+        <div style="text-align:center;color:#666;">▼ LiteratureReview</div>
+        <div style="background:#e8f5e9;padding:6px 10px;border-radius:3px;margin:3px 0;">
+          <strong>Phase 2:</strong> OrchestrationAgent.plan(review)
+        </div>
+        <div style="text-align:center;color:#666;">▼ AnalysisPlan (DAG)</div>
+        <div style="background:#f3e5f5;padding:6px 10px;border-radius:3px;margin:3px 0;">
+          <strong>Phase 3:</strong> AnalysisAgent.execute(plan)
+        </div>
+        <div style="text-align:center;color:#666;">▼ AnalysisResults</div>
+        <div style="background:#fce4ec;padding:6px 10px;border-radius:3px;margin:3px 0;">
+          <strong>Phase 4:</strong> ReportAgent.generate(...)
+        </div>
+        <div style="text-align:center;color:#666;">▼ Report</div>
+      </div>
+      <p style="margin-top:12px;font-size:12px;color:#666;">
+        ✅ 科研工作流天然是顺序的（先看文献→再设计→再实验→再写报告）<br>
+        ✅ 简单、可理解、容易调试、容易测试<br>
+        ✅ 适合面试 demo：每一步的中间输出都可展示
+      </p>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">内层：OrchestrationAgent.plan() — 动态 DAG</div>
+    <div class="mockup-body">
+      <div style="font-family:monospace;font-size:12px;line-height:1.6;">
+        <p><strong>输入：</strong>LiteratureReview（含 "CSTB通过M2巨噬细胞介导免疫抑制" 假设）</p>
+        <p><strong>LLM 推理 → 输出 DAG：</strong></p>
+        <div style="background:#fff3e0;padding:4px 8px;border-radius:3px;margin:2px 0;">
+          Node 1: diff_expression(CSTB)<br>
+          &nbsp;&nbsp;└→ Node 2: immune_correlation(CSTB, M2_markers)
+        </div>
+        <div style="background:#e8f5e9;padding:4px 8px;border-radius:3px;margin:2px 0;">
+          Node 3: cox_survival(CSTB, M2_high_vs_low)<br>
+          &nbsp;&nbsp;└→ depends on [Node 1, Node 2]
+        </div>
+        <div style="background:#f3e5f5;padding:4px 8px;border-radius:3px;margin:2px 0;">
+          Node 4: drug_screening(CSTB)<br>
+          &nbsp;&nbsp;└→ parallel: independent of others
+        </div>
+        <p style="margin-top:8px;font-size:12px;color:#666;">
+          ✅ 不同 LiteratureReview → 不同 DAG（不是硬编码）<br>
+          ✅ 体现 JD "LLM 规划"+"多步决策"<br>
+          ✅ DAG 内部支持并行（max 2 并行，受限于 Python 单进程）
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>关键对比</h3>
+  <table style="width:100%;border-collapse:collapse;font-size:14px;">
+    <tr style="background:#f5f5f5;">
+      <th style="padding:8px;">维度</th>
+      <th style="padding:8px;">外层 Pipeline</th>
+      <th style="padding:8px;">内层 DAG</th>
+    </tr>
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;">结构</td>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;">固定 4 Agent 串行</td>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;">LLM 动态生成，可变节点数/边</td>
+    </tr>
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;">变化来源</td>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;">无变化（代码即结构）</td>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;">随 LiteratureReview 内容变化</td>
+    </tr>
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;">执行顺序</td>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;">拓扑序（依赖 S1→S2→S3→S4）</td>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;">拓扑序 + 并行（无依赖节点并行）</td>
+    </tr>
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;">失败处理</td>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;">单 Agent 失败 → 整体失败</td>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;">单节点失败 → F2/F3/F4 恢复</td>
+    </tr>
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;">过度工程风险</td>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;">低</td>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;">需要克制 — 不需要完整的 DAG 执行引擎</td>
+    </tr>
+  </table>
+</div>
+
+<div class="section">
+  <h3>推荐：外层固定串行 + 内层 LLM 动态 DAG</h3>
+  <p>与你现有的 03- 设计文档完全一致，也是 Spatial master.py 的升级方向：从硬编码拓扑 → LLM 推理拓扑。</p>
+</div>

@@ -1,0 +1,90 @@
+<h2>问题 5：S3 Pipeline 如何实现 EvalAgent Protocol</h2>
+<p class="subtitle">S2 的 BiomedBenchmark 需要评估 S3。MultiAgentPipeline 必须实现 run(BenchmarkTask) → dict。</p>
+
+<div class="section">
+  <h3>核心挑战</h3>
+  <p>S3 的 Pipeline 是一个<strong>完整的 4 Agent 串行流程</strong>，输入是自然语言问题，输出是报告。但 S2 的 5 个 tasks 期望不同的输入输出格式。</p>
+</div>
+
+<div class="section">
+  <h3>5 Tasks 的适配方案</h3>
+  <table style="width:100%;border-collapse:collapse;font-size:13px;">
+    <tr style="background:#f5f5f5;">
+      <th style="padding:8px;">Task</th>
+      <th style="padding:8px;">S3 运行方式</th>
+      <th style="padding:8px;">适配难度</th>
+    </tr>
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;"><strong>T1-LIT</strong></td>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;">只跑 Phase 1（LiteratureAgent），其他 Phase 跳过<br>→ 就是 S1 的 LiteratureAgent，格式完全一致</td>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;color:#2e7d32;">✅ 简单</td>
+    </tr>
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;"><strong>T2-GDA</strong></td>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;">只跑 Phase 1+2（检索+判断关联强度）<br>→ 输出 association_judgment + evidence</td>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;color:#e65100;">🟡 中等</td>
+    </tr>
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;"><strong>T3-DEG</strong></td>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;">只跑 Phase 2+3（OrchestrationAgent.plan + AnalysisAgent 差异表达工具）<br>→ 输出 differentially_expressed_genes + method</td>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;color:#e65100;">🟡 中等</td>
+    </tr>
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;"><strong>T4-SURV</strong></td>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;">只跑 Phase 2+3（生存分析工具）<br>→ 输出 hazard_ratios + km_plot_data</td>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;color:#e65100;">🟡 中等</td>
+    </tr>
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;"><strong>T5-DRUG</strong></td>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;">只跑 Phase 2+3（药物筛选工具）<br>→ 输出 drug_correlations + fdr_results</td>
+      <td style="padding:8px;border-bottom:1px solid #e0e0e0;color:#e65100;">🟡 中等</td>
+    </tr>
+  </table>
+</div>
+
+<div class="section">
+  <h3>推荐方案：Task Router + 统一 run() 接口</h3>
+  <div class="mockup">
+    <div class="mockup-header">MultiAgentPipeline.run(task) 逻辑</div>
+    <div class="mockup-body">
+      <div style="font-family:monospace;font-size:12px;line-height:1.7;">
+<pre style="background:#263238;color:#aed581;padding:12px;border-radius:4px;margin:0;">
+class MultiAgentPipeline:
+    def run(self, task: BenchmarkTask) -> dict:
+        task_id = task.task_id
+
+        if task_id == "T1-LIT":
+            # 只跑 Phase 1
+            review = self.literature_agent.run(task)
+            return self._format_as_lit_output(review)
+
+        elif task_id == "T2-GDA":
+            # Phase 1 + 简化 Phase 2（不生成完整 DAG）
+            review = self.literature_agent.run(task)
+            association = self.orchestration_agent.assess_association(review, task)
+            return self._format_as_gda_output(association)
+
+        elif task_id in ("T3-DEG", "T4-SURV", "T5-DRUG"):
+            # 跳过 Phase 1，直接用 task.input 驱动 Phase 2+3
+            plan = self.orchestration_agent.plan_from_task(task)
+            results = self.analysis_agent.execute(plan)
+            return self._format_as_analysis_output(task_id, results)
+
+    @property
+    def name(self) -> str:
+        return "MultiAgentPipeline"
+</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>关键设计点</h3>
+  <ol>
+    <li><strong>T1-LIT</strong> 直接委托给 S1 的 LiteratureAgent（已在 S2 评测中跑通）</li>
+    <li><strong>T3/T4/T5</strong> 跳过文献检索 Phase，直接用 GT 中的基因名+数据集构造 plan —— 因为 benchmark 测的是"分析方法选择+执行"，不是文献检索</li>
+    <li><strong>T2-GDA</strong> 是中间态：需要少量文献检索 + 关联判断，不走完整 4 Agent</li>
+    <li><strong>format 方法</strong>（_format_as_*）负责把内部类型映射为 benchmark 期望的 dict 格式</li>
+  </ol>
+</div>

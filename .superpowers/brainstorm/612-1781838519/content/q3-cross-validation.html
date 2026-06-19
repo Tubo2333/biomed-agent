@@ -1,0 +1,67 @@
+<h2>问题 3：Layer 4 交叉验证的具体实现</h2>
+<p class="subtitle">00B 规定：Agent N+1 不盲目信任 Agent N 的输出。每个下游 Agent 必须运行 validate_upstream()。</p>
+
+<div class="section">
+  <h3>三个交叉验证节点的精确逻辑</h3>
+</div>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">节点 1: A2 验证 A1 输出</div>
+    <div class="mockup-body" style="font-size:13px;line-height:1.6;">
+      <p><strong>A1 输出：LiteratureReview</strong></p>
+      <p>📥 A2 的 <code>validate_upstream()</code> 检查：</p>
+      <ol style="padding-left:16px;">
+        <li><strong>证据链内部一致性</strong>：扫描 evidence_chain，检测相反方向的 claim（如 "CSTB 与预后相关" vs "CSTB 与预后无关"）→ 标记 conflict</li>
+        <li><strong>假设-证据对应</strong>：每个 hypothesis 的 rationale 是否引用了 evidence_chain 中实际存在的 claim？→ 没有引用 → WARNING</li>
+        <li><strong>置信度合理性</strong>：如果 evidence_chain 中 ≥50% 的 claim 是 weak/unverified，但整体 confidence > 0.7 → WARNING</li>
+        <li><strong>BLOCKER 条件</strong>：evidence_chain 为空 或 hypotheses 为空 → BLOCKER，退回 A1</li>
+      </ol>
+      <p style="color:#888;font-size:11px;">⚠ 注意基因名归一化（D1-01 deferred）：CSTB ≠ cystatin B</p>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">节点 2: A3 验证 A2 输出</div>
+    <div class="mockup-body" style="font-size:13px;line-height:1.6;">
+      <p><strong>A2 输出：AnalysisPlan (DAG)</strong></p>
+      <p>📥 A3 的 <code>validate_upstream()</code> 检查：</p>
+      <ol style="padding-left:16px;">
+        <li><strong>数据源存在性</strong>：每个 DAG 节点引用的数据文件路径是否真实存在？→ pathlib.Path.exists()</li>
+        <li><strong>基因名有效性</strong>：plan 中提到的基因是否在数据列中存在？→ 检查 TCGA 表达矩阵的 rownames</li>
+        <li><strong>方法合理性</strong>：plan 指定的分析方法是否在可用工具列表中？→ 不在 → WARNING, 降级为最接近的工具</li>
+        <li><strong>BLOCKER 条件</strong>：plan 中所有节点的数据源都不存在 → BLOCKER</li>
+      </ol>
+      <p style="color:#888;font-size:11px;">核心保护：防止 A2 幻觉出不存在的文件路径或数据列</p>
+    </div>
+  </div>
+</div>
+
+<div class="mockup" style="margin-top:16px;">
+  <div class="mockup-header">节点 3: A4 验证 A3 输出</div>
+  <div class="mockup-body" style="font-size:13px;line-height:1.6;">
+    <p><strong>A3 输出：AnalysisResults（每个 DAG 节点的定量结果）</strong></p>
+    <p>📥 A4 的 <code>validate_upstream()</code> 检查：</p>
+    <ol style="padding-left:16px;">
+      <li><strong>统计量合理性</strong>（复用 S2 的 V3 硬规则）：HR 在 0.01-100 间？p-value 在 0-1 间？logFC 在 -20~20 间？</li>
+      <li><strong>跨节点矛盾检测</strong>：节点 A 说 CSTB 在肿瘤中高表达(logFC>0)，节点 B 的 Cox 说 CSTB 是保护因素(HR<1) → 这不是错误，但需要标记 "needs biological explanation"</li>
+      <li><strong>缺失节点检查</strong>：plan 中的节点是否都有对应的 result？→ 有缺失 → 列出 "未完成的分析"</li>
+      <li><strong>BLOCKER 条件</strong>：所有分析节点的 result 都为空 → BLOCKER</li>
+    </ol>
+  </div>
+</div>
+
+<div class="section">
+  <h3>实现策略</h3>
+  <div class="options">
+    <div class="option" data-choice="recommended" onclick="toggleSelect(this)">
+      <div class="letter">✓</div>
+      <div class="content">
+        <h3>规则为主 + LLM 为辅</h3>
+        <p><strong>规则层</strong>（程序化，无 LLM 调用）：数据源存在性、基因名有效性、统计量范围、空值检查、BLOCKER 判定。<strong>约 80 行/节点</strong>。</p>
+        <p><strong>LLM 层</strong>（仅在边界情况下触发）：跨节点矛盾是否需要生物学解释？证据链矛盾是否是真正的学术争议？<strong>仅在 WARNING 级别触发</strong>。</p>
+        <p><strong>实现位置</strong>：每个 Agent 类的 <code>validate_upstream(input) -> ValidationReport</code>，返回 PASS / WARNING / BLOCKER。</p>
+      </div>
+    </div>
+  </div>
+</div>

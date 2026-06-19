@@ -1,0 +1,40 @@
+graph TB
+    subgraph "BioMed-Agent System Architecture / 系统架构 — Fig 1"
+        direction TB
+
+        USER["👤 用户问题 User Question<br/>CSTB在结直肠癌中的预后价值与免疫浸润"]:::red
+
+        subgraph ROW1[" "]
+            direction LR
+            A1["🧠 Agent 1: LiteratureAgent 文献检索智能体<br/>PubMed多轮检索 → 结构化证据链EvidenceLink → 1-3个可验证假设"]:::blue1
+            L4_1["🛡 L4 Gate #1<br/>A2验证A1输出<br/>证据链一致性 / 假设-证据对应 / 置信度合理性"]:::gate
+            A2["📐 Agent 2: OrchestrationAgent 分析编排智能体<br/>LLM动态DAG生成 → 假设分类(single_gene/pathway/multi_gene) → 方法兼容校验"]:::orange1
+            A1 --> L4_1 --> A2
+        end
+
+        subgraph ROW2[" "]
+            direction LR
+            A4["📝 Agent 4: ReportAgent 报告生成智能体<br/>多源整合 → 6强制章节(含阴性结果) → [HUMAN REVIEW]标记"]:::red1
+            L4_3["🛡 L4 Gate #3<br/>A4验证A3输出<br/>统计量合理性 / 跨节点矛盾 / 效应量阈值 / 覆盖率"]:::gate
+            A3["⚡ Agent 3: AnalysisAgent 分析执行智能体<br/>Think→Act→Observe → 三层数据访问(缓存→实时→降级) → F1-F5失败恢复"]:::green1
+            A4 --> L4_3 --> A3
+        end
+
+        TOOLS["🔧 分析工具集 Analysis Tools<br/>TCGADataAccessor 差异表达 | SurvivalTools Cox+KM | DrugTools GDSC2 | ImmuneTools 免疫浸润"]:::purple1
+
+        OUTPUT["📄 产出 Output<br/>结构化报告(.md) + 执行日志 + L4警告清单 → 进入S4技术报告/S5投递打包"]:::darkblue
+
+        USER --> A1
+        A2 -.-> A3
+        A3 -.-> TOOLS
+        L4_3 -.-> OUTPUT
+    end
+
+    classDef red fill:#C62828,stroke:#fff,color:#fff
+    classDef blue1 fill:#0395D8,stroke:#fff,color:#fff
+    classDef orange1 fill:#FF8F00,stroke:#fff,color:#333
+    classDef green1 fill:#00B07C,stroke:#fff,color:#fff
+    classDef red1 fill:#E84040,stroke:#fff,color:#fff
+    classDef gate fill:#FFF9C4,stroke:#F9A825,color:#333
+    classDef purple1 fill:#7B1FA2,stroke:#fff,color:#fff
+    classDef darkblue fill:#1565C0,stroke:#fff,color:#fff

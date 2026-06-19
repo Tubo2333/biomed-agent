@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Node
+node_modules/
+
+# Generated DOCX (local only, not uploaded)
+docs/*.docx
+design/*.docx
+
+# Data outputs (runtime generated)
+data/demo_output/
+data/pubmed_cache/
+results/
+
+# Dev tools (local paths, secrets — not part of the deliverable)
+paper/figures/agnes_*.py
+paper/figures/check_*.py
+presentation/preview-slides.js
+presentation/_slide*.html
+presentation/slide*_preview.png

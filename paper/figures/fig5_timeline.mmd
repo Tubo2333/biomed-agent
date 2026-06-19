@@ -1,0 +1,19 @@
+gantt
+    title BioMed-Agent: CSTB Case Study — Agent Execution Timeline 智能体执行时间线 (Fig 5)
+    dateFormat X
+    axisFormat %s秒
+    tickInterval 30second
+
+    section Phase 1 — LiteratureAgent 文献检索
+    PubMed检索 + 证据整合 + 假设生成 : a1, 0, 163s
+
+    section Phase 2 — OrchestrationAgent 分析编排
+    LLM动态DAG规划 (4节点)            : a2, after a1, 53s
+
+    section Phase 3 — AnalysisAgent 分析执行
+    Node 1: 差异表达 (CSTB, TCGA-COAD)   : a3a, after a2, 26s
+    Node 3: 生存分析 (Cox回归)            : a3b, after a2, 26s
+    Node 2: 免疫关联 (⚠ Degraded F4)     : crit, a3c, after a2, 26s
+
+    section Phase 4 — ReportAgent 报告生成
+    结构化报告 (9447字, 6章节)            : a4, after a3a, 42s

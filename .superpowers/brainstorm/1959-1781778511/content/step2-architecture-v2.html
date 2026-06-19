@@ -1,0 +1,136 @@
+<h2>Step 2 修订版架构 — 纳入全部审查意见</h2>
+<p class="subtitle">v2 修订：+Contamination Check · Safety 硬门槛 · Tolerance Band · 方法学白名单 · Z-score 归一化</p>
+
+<div class="section">
+  <h3>模块清单修订（8 → 9 个文件）</h3>
+  <pre style="background:#1a1a2e;color:#e0e0e0;padding:16px;border-radius:8px;font-size:13px;line-height:1.6">
+biomed-agent/src/benchmark/
+├── <strong style="color:#00B07C">types.py</strong>          # BenchmarkTask / AgentEvalMetrics / EvalAgent Protocol
+├── <strong style="color:#0395D8">tasks.py</strong>          # 5 Task定义 + GT加载器 + <strong style="background:#F59E0B;color:#000">Tolerance Band</strong>
+├── <strong style="color:#0395D8">metrics.py</strong>         # 4维Metrics + <strong style="background:#F59E0B;color:#000">Safety硬门槛(≥0.7)</strong>
+├── <strong style="color:#8B5CF6">contamination.py</strong>   # <strong style="background:#F59E0B;color:#000">【新增】</strong> 预训练污染检测 + 天花板效应检测
+├── <strong style="color:#E84040">hallucination.py</strong>    # 硬规则+软分级 + <strong style="background:#F59E0B;color:#000">方法学白名单(20+篇)</strong>
+├── <strong style="color:#0395D8">runner.py</strong>          # BiomedBenchmark + <strong style="background:#F59E0B;color:#000">预注册 hypothesis 机制</strong>
+├── <strong style="color:#F59E0B">baselines.py</strong>       # B1/B2/B3/B4 (B4=Domain ReAct)
+├── <strong style="color:#EC4899">scorer.py</strong>          # 人工评分模板 + <strong style="background:#F59E0B;color:#000">双评信度(Cohen's κ)</strong>
+└── <strong style="color:#EC4899">reporter.py</strong>         # 结果聚合 + <strong style="background:#F59E0B;color:#000">Z-score归一化</strong> + JSON/CSV
+  </pre>
+</div>
+
+<div class="section">
+  <h3>审查意见 → 修复映射表</h3>
+  <table style="width:100%;border-collapse:collapse;font-size:13px">
+    <tr style="background:#1a1a2e;color:#e0e0e0">
+      <th style="padding:8px;text-align:left">#</th>
+      <th style="padding:8px;text-align:left">审查发现</th>
+      <th style="padding:8px;text-align:left">修复方案</th>
+      <th style="padding:8px;text-align:left">落地模块</th>
+    </tr>
+    <tr style="background:#16213e">
+      <td style="padding:8px">1</td>
+      <td style="padding:8px">B3≈B4 时三种解释不可区分（contamination）</td>
+      <td style="padding:8px">Naive LLM 无数据直接提问 → 若答对则标记 contamination；至少 1 个非公开 GT case</td>
+      <td style="padding:8px;color:#8B5CF6">contamination.py</td>
+    </tr>
+    <tr style="background:#1a1a2e">
+      <td style="padding:8px">2</td>
+      <td style="padding:8px">Safety 非 gate 函数，幻觉 Agent 可被"洗白"</td>
+      <td style="padding:8px">Safety < 0.7 → 总分 ×0.5 惩罚因子，标记 "NOT TRUSTWORTHY"</td>
+      <td style="padding:8px;color:#0395D8">metrics.py</td>
+    </tr>
+    <tr style="background:#16213e">
+      <td style="padding:8px">3</td>
+      <td style="padding:8px">T3-T5 GT 循环验证风险</td>
+      <td style="padding:8px">HR tolerance ±0.15；GT 声明为"反映 ITIP 特定管线"；3 个关键基因独立交叉核对</td>
+      <td style="padding:8px;color:#0395D8">tasks.py</td>
+    </tr>
+    <tr style="background:#1a1a2e">
+      <td style="padding:8px">4</td>
+      <td style="padding:8px">硬规则误杀方法学引用</td>
+      <td style="padding:8px">区分 evidence/method citations；维护 20+ 篇方法学论文白名单</td>
+      <td style="padding:8px;color:#E84040">hallucination.py</td>
+    </tr>
+    <tr style="background:#16213e">
+      <td style="padding:8px">5</td>
+      <td style="padding:8px">跨 task 线性归一化引入分布偏差</td>
+      <td style="padding:8px">Z-score 归一化 (x-μ)/σ；同时报告 raw + normalized；雷达图替代单一 Overall</td>
+      <td style="padding:8px;color:#EC4899">reporter.py</td>
+    </tr>
+    <tr style="background:#1a1a2e">
+      <td style="padding:8px">6</td>
+      <td style="padding:8px">Test case 非独立性未建模</td>
+      <td style="padding:8px">Bootstrap CI (gene-level resampling)；effective n < 5 时标记 exploratory</td>
+      <td style="padding:8px;color:#0395D8">runner.py</td>
+    </tr>
+    <tr style="background:#16213e">
+      <td style="padding:8px">7</td>
+      <td style="padding:8px">T1-LIT 高引=旧论文</td>
+      <td style="padding:8px">时间分层：GT 强制 ≥20% 近 3 年论文（不设引用门槛）；per-year-group Recall@K</td>
+      <td style="padding:8px;color:#0395D8">tasks.py</td>
+    </tr>
+    <tr style="background:#1a1a2e">
+      <td style="padding:8px">8</td>
+      <td style="padding:8px">T2-GDA 双源矛盾无仲裁</td>
+      <td style="padding:8px">三级置信度：双源一致=high / 单一来源=moderate / 分别报告 Accuracy</td>
+      <td style="padding:8px;color:#0395D8">tasks.py</td>
+    </tr>
+    <tr style="background:#16213e">
+      <td style="padding:8px">9</td>
+      <td style="padding:8px">P0-4 验证 n=1 无统计意义</td>
+      <td style="padding:8px">≥10 个注入样本（5真+5假混合），recall ≥0.8 & precision ≥0.9</td>
+      <td style="padding:8px;color:#E84040">hallucination.py</td>
+    </tr>
+    <tr style="background:#1a1a2e">
+      <td style="padding:8px">10</td>
+      <td style="padding:8px">人工评分单人无信度</td>
+      <td style="padding:8px">4/12 份双评，报告 Cohen's κ；κ < 0.6 则降级为 preliminary</td>
+      <td style="padding:8px;color:#EC4899">scorer.py</td>
+    </tr>
+    <tr style="background:#16213e">
+      <td style="padding:8px">11</td>
+      <td style="padding:8px">多重比较未校正</td>
+      <td style="padding:8px">预注册 primary hypotheses；其余 exploratory + BH 校正</td>
+      <td style="padding:8px;color:#0395D8">runner.py</td>
+    </tr>
+    <tr style="background:#1a1a2e">
+      <td style="padding:8px">12</td>
+      <td style="padding:8px">Completion Rate 可被刷</td>
+      <td style="padding:8px">区分 (a)有答案完成 / (b)合理拒绝(同分) / (c)崩溃超时</td>
+      <td style="padding:8px;color:#0395D8">metrics.py</td>
+    </tr>
+  </table>
+</div>
+
+<div class="section">
+  <h3>修订后 Baseline 矩阵</h3>
+  <table style="width:100%;border-collapse:collapse">
+    <tr style="background:#1a1a2e;color:#e0e0e0">
+      <th style="padding:8px;text-align:left"></th>
+      <th style="padding:8px;text-align:center">Tool</th>
+      <th style="padding:8px;text-align:center">检索</th>
+      <th style="padding:8px;text-align:center">多轮+证据链</th>
+      <th style="padding:8px;text-align:center">领域Prompt</th>
+    </tr>
+    <tr><td style="padding:8px">B1 Naive LLM</td><td style="padding:8px;text-align:center;color:#E84040">❌</td><td style="padding:8px;text-align:center;color:#E84040">❌</td><td style="padding:8px;text-align:center;color:#E84040">❌</td><td style="padding:8px;text-align:center;color:#E84040">❌</td></tr>
+    <tr><td style="padding:8px">B2 ReAct</td><td style="padding:8px;text-align:center;color:#00B07C">✅</td><td style="padding:8px;text-align:center;color:#E84040">❌</td><td style="padding:8px;text-align:center;color:#E84040">❌</td><td style="padding:8px;text-align:center;color:#E84040">❌</td></tr>
+    <tr><td style="padding:8px">B3 Simple RAG</td><td style="padding:8px;text-align:center;color:#00B07C">✅</td><td style="padding:8px;text-align:center;color:#00B07C">✅单轮</td><td style="padding:8px;text-align:center;color:#E84040">❌</td><td style="padding:8px;text-align:center;color:#E84040">❌</td></tr>
+    <tr><td style="padding:8px;color:#F59E0B">B4 Domain ReAct</td><td style="padding:8px;text-align:center;color:#00B07C">✅</td><td style="padding:8px;text-align:center;color:#E84040">❌</td><td style="padding:8px;text-align:center;color:#E84040">❌</td><td style="padding:8px;text-align:center;color:#00B07C">✅</td></tr>
+    <tr><td style="padding:8px;color:#00B07C">LiteratureAgent</td><td style="padding:8px;text-align:center;color:#00B07C">✅</td><td style="padding:8px;text-align:center;color:#00B07C">✅多轮</td><td style="padding:8px;text-align:center;color:#00B07C">✅</td><td style="padding:8px;text-align:center;color:#00B07C">✅</td></tr>
+  </table>
+  <p style="font-size:12px;color:#888;margin-top:8px">B4 的领域 Prompt 不仅包含"你是生物信息学专家"，还编码了 4 条方法学最佳实践（limma→RNA-seq、Cox→PH检验、多重校正→BH、batch effect→检查）。这使 B4 与 B2 的差异足够清晰。</p>
+</div>
+
+<div class="section">
+  <h3>修订后 Metrics 权重 + Safety Gate</h3>
+  <table style="width:100%;border-collapse:collapse">
+    <tr style="background:#1a1a2e;color:#e0e0e0">
+      <th style="padding:8px;text-align:left">维度</th>
+      <th style="padding:8px;text-align:center">权重</th>
+      <th style="padding:8px;text-align:left">Gate 规则</th>
+    </tr>
+    <tr><td style="padding:8px">Completion Rate</td><td style="padding:8px;text-align:center">0.15</td><td style="padding:8px;font-size:13px">区分 (a)有答案 (b)合理拒绝(=满分) (c)崩溃(0分)</td></tr>
+    <tr><td style="padding:8px">Tool Selection</td><td style="padding:8px;text-align:center">0.25</td><td style="padding:8px;font-size:13px">正确方法+参数=满分；正确方法+错误参数=扣半</td></tr>
+    <tr><td style="padding:8px">Correctness</td><td style="padding:8px;text-align:center">0.35</td><td style="padding:8px;font-size:13px">Tolerance Bands: HR±0.15 / logFC±1.0 / Spearman rho±0.1</td></tr>
+    <tr><td style="padding:8px;color:#E84040;font-weight:bold">Safety & Trust</td><td style="padding:8px;text-align:center;font-weight:bold">0.25</td><td style="padding:8px;font-size:13px"><strong style="color:#E84040">🔒 HARD GATE: Safety < 0.7 → 总分 ×0.5 + 标记 "NOT TRUSTWORTHY"</strong></td></tr>
+  </table>
+</div>

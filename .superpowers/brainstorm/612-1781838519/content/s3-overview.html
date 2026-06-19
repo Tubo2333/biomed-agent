@@ -1,0 +1,86 @@
+<h2>Step 3: Multi-Agent Pipeline — 整体架构总览</h2>
+<p class="subtitle">4 个 Agent 串行协作，完成从文献到报告的完整科研闭环</p>
+
+<div class="section">
+  <div class="mockup">
+    <div class="mockup-header">Pipeline 数据流</div>
+    <div class="mockup-body">
+      <div style="font-family: monospace; font-size: 14px; line-height: 2;">
+        <div style="background:#e3f2fd; padding:8px 12px; margin:4px 0; border-radius:4px; border-left:4px solid #1976d2;">
+          👤 <strong>User Question:</strong> "CSTB 在结直肠癌中的预后价值和免疫浸润关联"
+        </div>
+        <div style="text-align:center; margin:4px 0; color:#666;">▼</div>
+        <div style="background:#fff3e0; padding:8px 12px; margin:4px 0; border-radius:4px; border-left:4px solid #e65100;">
+          <strong>Agent 1: LiteratureAgent</strong> (S1 产出)<br>
+          PubMed 检索 → LLM Rerank → 证据链 → 假设生成<br>
+          <span style="color:#888;font-size:12px;">输出: LiteratureReview {evidence_chain, hypotheses, knowledge_gaps}</span>
+        </div>
+        <div style="text-align:center; margin:4px 0; color:#e65100;">▼ <span style="background:#fff3e0;padding:2px 6px;border-radius:3px;">Layer 4 交叉验证点</span></div>
+        <div style="background:#e8f5e9; padding:8px 12px; margin:4px 0; border-radius:4px; border-left:4px solid #2e7d32;">
+          <strong>Agent 2: OrchestrationAgent</strong> (S3 新建)<br>
+          LLM 驱动动态 DAG 生成 → 方法匹配 → 数据源分配<br>
+          <span style="color:#888;font-size:12px;">输出: AnalysisPlan (DAG of analysis tasks)</span>
+        </div>
+        <div style="text-align:center; margin:4px 0; color:#2e7d32;">▼ <span style="background:#e8f5e9;padding:2px 6px;border-radius:3px;">Layer 4 交叉验证点</span></div>
+        <div style="background:#f3e5f5; padding:8px 12px; margin:4px 0; border-radius:4px; border-left:4px solid #7b1fa2;">
+          <strong>Agent 3: AnalysisAgent</strong> (S3 新建)<br>
+          Think→Act→Observe 工具调用 → 失败恢复 F1-F5<br>
+          <span style="color:#888;font-size:12px;">输出: AnalysisResults (每个节点的定量结果 + 执行日志)</span>
+        </div>
+        <div style="text-align:center; margin:4px 0; color:#7b1fa2;">▼ <span style="background:#f3e5f5;padding:2px 6px;border-radius:3px;">Layer 4 交叉验证点</span></div>
+        <div style="background:#fce4ec; padding:8px 12px; margin:4px 0; border-radius:4px; border-left:4px solid #c62828;">
+          <strong>Agent 4: ReportAgent</strong> (S3 新建)<br>
+          多源整合 → 假设验证判断 → 结构化报告 → 局限性<br>
+          <span style="color:#888;font-size:12px;">输出: Structured Report (.md)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>5 个关键设计决定</h3>
+  <p class="subtitle">点击一个进入详细讨论，或按顺序逐个解决</p>
+  <div class="options">
+    <div class="option" data-choice="q1" onclick="toggleSelect(this)">
+      <div class="letter">1</div>
+      <div class="content">
+        <h3>R 代码集成方式</h3>
+        <p>AnalysisAgent 的工具内部如何执行分析？subprocess R？rpy2？预计算缓存？</p>
+        <span class="label">影响：工具设计 + 失败恢复策略</span>
+      </div>
+    </div>
+    <div class="option" data-choice="q2" onclick="toggleSelect(this)">
+      <div class="letter">2</div>
+      <div class="content">
+        <h3>真执行 vs 模拟执行边界</h3>
+        <p>哪些分析用预计算缓存？哪些实时 Python 计算？分界线在哪？</p>
+        <span class="label">影响：Agent 工具集定义 + 正确性验证</span>
+      </div>
+    </div>
+    <div class="option" data-choice="q3" onclick="toggleSelect(this)">
+      <div class="letter">3</div>
+      <div class="content">
+        <h3>Layer 4 交叉验证</h3>
+        <p>下游 Agent 如何验证上游输出？validate_upstream() 的具体逻辑？</p>
+        <span class="label">影响：反幻觉防线完整性</span>
+      </div>
+    </div>
+    <div class="option" data-choice="q4" onclick="toggleSelect(this)">
+      <div class="letter">4</div>
+      <div class="content">
+        <h3>Pipeline 固定 vs 可扩展 DAG</h3>
+        <p>4 Agent 串行够不够？OrchestrationAgent 内部的 DAG 能多灵活？</p>
+        <span class="label">影响：架构复杂度 + 可扩展性</span>
+      </div>
+    </div>
+    <div class="option" data-choice="q5" onclick="toggleSelect(this)">
+      <div class="letter">5</div>
+      <div class="content">
+        <h3>EvalAgent Protocol 适配</h3>
+        <p>S3 Pipeline 如何被 S2 Benchmark 评估？5 tasks 各自怎么跑？</p>
+        <span class="label">影响：S2 集成 + 定量结果产出</span>
+      </div>
+    </div>
+  </div>
+</div>

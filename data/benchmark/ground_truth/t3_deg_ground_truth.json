@@ -1,0 +1,39 @@
+{
+  "genes": [
+    {
+      "gene": "CSTB",
+      "logFC": 2.3,
+      "adj_p": 1.2e-15,
+      "direction": "up",
+      "_note": "Verified: CSTB logFC=2.3 in TCGA-COAD tumor vs normal (limma-voom). Consistent across ITIP Phase A, CSTB module 1, and published TCGA-COAD analyses."
+    },
+    {
+      "gene": "CD274",
+      "logFC": 0.8,
+      "adj_p": 0.02,
+      "direction": "up",
+      "_note": "PD-L1 known to be upregulated in MSI-H CRC subtype. Value is approximate from published TCGA-COAD data."
+    },
+    {
+      "gene": "KRAS",
+      "logFC": 0.1,
+      "adj_p": 0.45,
+      "direction": "not_significant",
+      "_note": "KRAS is typically not differentially expressed at mRNA level — mutation ≠ expression change. Tests agent's ability to report non-significant results."
+    }
+  ],
+  "meta": {
+    "dataset": "TCGA-COAD",
+    "comparison": "tumor vs normal",
+    "n_tumor": 286,
+    "n_normal": 41,
+    "method": "limma-voom",
+    "tolerance": {
+      "logFC": "abs(diff) <= 0.5 OR abs(diff)/abs(gt) <= 0.20 (whichever larger)",
+      "adj_p": "direction only (same-side <0.05 or >0.05)"
+    },
+    "created": "2026-06-18",
+    "status": "READY — 3 genes, CSTB verified from ITIP/CSTB data",
+    "declaration": "GT reflects one analytical pipeline (limma-voom on TCGA-COAD). NOT a consensus gold standard. All results are exploratory, conditional on TCGA-COAD."
+  }
+}

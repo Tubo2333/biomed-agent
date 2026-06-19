@@ -1,0 +1,68 @@
+graph LR
+    subgraph "Fig 2: Structured Evidence Chain — EvidenceLink Data Model"
+        direction TB
+
+        Q["Research Question<br/>CSTB in CRC"]
+
+        subgraph PAPERS["Retrieved Papers"]
+            P1["PMID:10690531<br/>Kos 2000<br/>n=345 CRC patients"]
+            P2["PMID:21833088<br/>TCGA-COAD<br/>n=303"]
+        end
+
+        subgraph CLAIM["Evidence Claim"]
+            C1["Claim: CSTB shows trend toward<br/>unfavorable prognosis in CRC<br/>(HR=1.46, p=0.053)"]
+        end
+
+        subgraph SUPPORT["Supporting Evidence"]
+            S1["Supporting PMIDs<br/>[PMID:10690531]<br/>[PMID:21833088]"]
+            S2["Strength: moderate<br/>Justification: 1 independent<br/>study, n=345, consistent<br/>direction of effect"]
+        end
+
+        subgraph COUNTER["Counter Evidence"]
+            CE["Serum CSTB not significantly<br/>different between CRC patients<br/>and healthy controls<br/>(median 1.2 vs 1.7 ng/ml)"]
+        end
+
+        subgraph RULES["Layer 2 Hard Contradiction Rules (__post_init__)"]
+            R1["Rule 1: strength={strong,moderate} requires >=1 PMID"]
+            R2["Rule 2: strength='strong' cannot have counter-evidence"]
+            R3["Rule 3: strength_justification is mandatory"]
+            R4["Rule 4: Zero PMIDs + no counter -> auto 'unverified'"]
+        end
+
+        subgraph GAPS["Knowledge Gaps Identified"]
+            G1["G1: No tissue-level CSTB expression in CRC"]
+            G2["G2: No immune infiltration correlation studies"]
+            G3["G3: No functional/mechanistic studies"]
+            G4["G4: No drug target screening for CSTB in CRC"]
+        end
+
+        Q --> P1
+        Q --> P2
+        P1 --> C1
+        P2 --> C1
+        C1 --> S1
+        C1 --> S2
+        C1 --> CE
+        C1 -.-> G1
+        C1 -.-> G2
+        S2 -.-> R1
+        S2 -.-> R3
+        CE -.-> R2
+        S1 -.-> R4
+    end
+
+    style Q fill:#C62828,stroke:#fff,color:#fff
+    style P1 fill:#0395D8,stroke:#fff,color:#fff
+    style P2 fill:#0395D8,stroke:#fff,color:#fff
+    style C1 fill:#00B07C,stroke:#fff,color:#fff
+    style S1 fill:#0395D8,stroke:#fff,color:#fff
+    style S2 fill:#7B1FA2,stroke:#fff,color:#fff
+    style CE fill:#E84040,stroke:#fff,color:#fff
+    style R1 fill:#FF8F00,stroke:#fff,color:#333
+    style R2 fill:#FF8F00,stroke:#fff,color:#333
+    style R3 fill:#FF8F00,stroke:#fff,color:#333
+    style R4 fill:#FF8F00,stroke:#fff,color:#333
+    style G1 fill:#FFF3E0,stroke:#FF8F00,color:#333
+    style G2 fill:#FFF3E0,stroke:#FF8F00,color:#333
+    style G3 fill:#FFF3E0,stroke:#FF8F00,color:#333
+    style G4 fill:#FFF3E0,stroke:#FF8F00,color:#333

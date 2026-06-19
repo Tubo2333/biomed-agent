@@ -1,0 +1,35 @@
+graph TB
+    subgraph L5["Layer 5: Human Review"]
+        H1["strong claims → [HUMAN REVIEW RECOMMENDED]"]
+        H2["hallucination_rate > 0.1 → flagged"]
+    end
+
+    subgraph L4["Layer 4: Cross-Validation"]
+        V1["A2 validates A1<br/>evidence chain consistency"]
+        V2["A3 validates A2<br/>data source existence"]
+        V3["A4 validates A3<br/>stats sanity + contradiction"]
+    end
+
+    subgraph L3["Layer 3: Post-hoc Verification"]
+        P1["V1: PMID existence check"]
+        P2["V2: Gene name validity"]
+        P3["V3: Statistical sanity (HR 0.01-100)"]
+        P4["V4: Cross-claim consistency"]
+    end
+
+    subgraph L2["Layer 2: Structural Constraint"]
+        S1["EvidenceLink.__post_init__"]
+        S2["4 hard checks:<br/>strong must have PMID<br/>counter_evidence → not strong<br/>strength must justified<br/>no PMID+no counter → unverified"]
+    end
+
+    subgraph L1["Layer 1: Prompt Constraint"]
+        C1["5 hard rules in every system prompt:<br/>No Fabrication / Source Attribution<br/>Uncertainty Expression / Quantitative Precision<br/>Negative Results"]
+    end
+
+    L5 --> L4 --> L3 --> L2 --> L1
+
+    style L5 fill:#E8995E,stroke:#C47A3B,color:#fff
+    style L4 fill:#4DB8A8,stroke:#35998A,color:#fff
+    style L3 fill:#0395D8,stroke:#0275B0,color:#fff
+    style L2 fill:#7B5CA8,stroke:#634B8E,color:#fff
+    style L1 fill:#5CBF60,stroke:#45A048,color:#fff

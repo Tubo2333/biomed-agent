@@ -1,0 +1,62 @@
+graph TB
+    subgraph "Fig 6: CSTB Case Study — Evidence-to-Results Pipeline / 证据到结果全流程"
+        direction TB
+
+        Q["🔬 研究问题 Research Question<br/>CSTB in CRC: Prognostic Value &amp; Immune Infiltration<br/>CSTB在结直肠癌中的预后价值与免疫浸润"]:::red
+
+        LIT["📚 Phase 1: LiteratureAgent 文献检索<br/>PubMed 3轮检索 | 2篇论文 | confidence=0.1"]:::blue
+
+        subgraph ROW1["════════ 假设 → 规划 / Hypotheses → Planning ════════"]
+            direction LR
+            H1["H1: CSTB mRNA在CRC中上调<br/>CSTB upregulated in CRC vs normal"]:::purple
+            H2["H2: CSTB与M2巨噬细胞浸润相关<br/>CSTB correlates with M2 infiltration"]:::purple
+            H3["H3: CSTB高表达=不良预后因素<br/>High CSTB = adverse prognostic factor"]:::purple
+            DAG["📐 Phase 2: OrchestrationAgent<br/>LLM动态DAG | 4分析节点<br/>single_gene | pathway | single_gene"]:::orange
+            H1 --> DAG
+            H2 --> DAG
+            H3 --> DAG
+        end
+
+        ROW1 ~~~ ROW2
+
+        subgraph ROW2["════════ 执行 → 验证 → 报告 / Execution → Validation → Report ════════"]
+            direction LR
+            subgraph ANALYZE["Phase 3: AnalysisAgent 分析执行"]
+                A1["✅ Node 1: 差异表达 DEG<br/>CSTB, TCGA-COAD n=331<br/>logFC=0.073, p_adj=3.7e-5<br/>⚠ |logFC| &lt; 0.5"]:::green
+                A2["⚠ Node 2: 免疫关联 Immune<br/>DEGRADED (F4)<br/>无缓存数据"]:::degraded
+                A3["✅ Node 3: 生存分析 Survival<br/>HR=1.46, 95%CI[1.00,2.13]<br/>p=0.053 (未达显著)"]:::green
+            end
+
+            subgraph VALIDATE["L4 交叉验证 Warnings"]
+                W1["W1: 免疫关联无缓存"]:::warn
+                W2["W2: CSTB不在免疫缓存"]:::warn
+                W3["W3: 效应量低于阈值"]:::warn
+            end
+
+            REP["📄 Phase 4: ReportAgent<br/>结构化报告 | 9,447字符<br/>6强制章节 | 含阴性结果<br/>+ [HUMAN REVIEW] 标记"]:::darkblue
+
+            A1 -.-> W3
+            A2 -.-> W1
+            A2 -.-> W2
+            A1 --> REP
+            A2 --> REP
+            A3 --> REP
+        end
+
+        Q --> LIT
+        LIT --> H1
+        LIT --> H2
+        LIT --> H3
+        DAG -.-> A1
+        DAG -.-> A2
+        DAG -.-> A3
+    end
+
+    classDef red fill:#C62828,stroke:#fff,color:#fff
+    classDef blue fill:#0395D8,stroke:#fff,color:#fff
+    classDef purple fill:#7B1FA2,stroke:#fff,color:#fff
+    classDef orange fill:#FF8F00,stroke:#fff,color:#333
+    classDef green fill:#00B07C,stroke:#fff,color:#fff
+    classDef degraded fill:#B2DFDB,stroke:#FF8F00,color:#333,stroke-dasharray:5 5
+    classDef warn fill:#FFF3E0,stroke:#FF8F00,color:#333
+    classDef darkblue fill:#1565C0,stroke:#fff,color:#fff

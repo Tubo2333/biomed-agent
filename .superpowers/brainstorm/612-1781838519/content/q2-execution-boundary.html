@@ -1,0 +1,87 @@
+<h2>问题 2：AnalysisAgent 真执行 vs 模拟执行边界</h2>
+<p class="subtitle">Agent 的"工具调用"在什么情况下是真实计算？什么情况下是查询缓存？分界线在哪？</p>
+
+<div class="section">
+  <h3>可用的分析能力清单</h3>
+  <table style="width:100%;border-collapse:collapse;font-size:14px;">
+    <tr style="background:#f5f5f5;">
+      <th style="padding:10px;text-align:left;">分析类型</th>
+      <th style="padding:10px;text-align:left;">缓存来源</th>
+      <th style="padding:10px;text-align:left;">缓存覆盖</th>
+      <th style="padding:10px;text-align:left;">建议方式</th>
+    </tr>
+    <tr>
+      <td style="padding:10px;border-bottom:1px solid #e0e0e0;">差异表达分析</td>
+      <td style="padding:10px;border-bottom:1px solid #e0e0e0;">ITIP Phase A + CSTB Module 1</td>
+      <td style="padding:10px;border-bottom:1px solid #e0e0e0;">3 genes (CSTB/TP53/CD274)</td>
+      <td style="padding:10px;border-bottom:1px solid #e0e0e0;">🔵 缓存查询</td>
+    </tr>
+    <tr>
+      <td style="padding:10px;border-bottom:1px solid #e0e0e0;">Cox 生存分析</td>
+      <td style="padding:10px;border-bottom:1px solid #e0e0e0;">ITIP Phase C</td>
+      <td style="padding:10px;border-bottom:1px solid #e0e0e0;">3 genes (HR + CI + p-value)</td>
+      <td style="padding:10px;border-bottom:1px solid #e0e0e0;">🔵 缓存查询</td>
+    </tr>
+    <tr>
+      <td style="padding:10px;border-bottom:1px solid #e0e0e0;">KM 曲线数据</td>
+      <td style="padding:10px;border-bottom:1px solid #e0e0e0;">ITIP Phase C</td>
+      <td style="padding:10px;border-bottom:1px solid #e0e0e0;">3 genes (分组的 survival table)</td>
+      <td style="padding:10px;border-bottom:1px solid #e0e0e0;">🔵 缓存查询</td>
+    </tr>
+    <tr>
+      <td style="padding:10px;border-bottom:1px solid #e0e0e0;">免疫浸润关联</td>
+      <td style="padding:10px;border-bottom:1px solid #e0e0e0;">CSTB Module 4</td>
+      <td style="padding:10px;border-bottom:1px solid #e0e0e0;">1 gene × 6 免疫方法</td>
+      <td style="padding:10px;border-bottom:1px solid #e0e0e0;">🟢 实时 Python</td>
+    </tr>
+    <tr>
+      <td style="padding:10px;border-bottom:1px solid #e0e0e0;">药物敏感性筛选</td>
+      <td style="padding:10px;border-bottom:1px solid #e0e0e0;">ITIP Phase E (GDSC2)</td>
+      <td style="padding:10px;border-bottom:1px solid #e0e0e0;">3 genes × N drugs</td>
+      <td style="padding:10px;border-bottom:1px solid #e0e0e0;">🟢 实时 Python</td>
+    </tr>
+    <tr>
+      <td style="padding:10px;border-bottom:1px solid #e0e0e0;">基因-基因相关性</td>
+      <td style="padding:10px;border-bottom:1px solid #e0e0e0;">无缓存</td>
+      <td style="padding:10px;border-bottom:1px solid #e0e0e0;">N/A（完全动态）</td>
+      <td style="padding:10px;border-bottom:1px solid #e0e0e0;">🟡 实时 Python + 降级</td>
+    </tr>
+  </table>
+</div>
+
+<div class="section">
+  <h3>推荐分层</h3>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="recommended" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>三层混合模型（推荐）</h3>
+      <p><strong>Layer 🟢 实时 Python</strong>：免疫关联、药物筛选 — 数据在 pandas DataFrame 中，scipy.stats 直接算 Spearman/pearson，毫秒级。</p>
+      <p><strong>Layer 🔵 缓存查询</strong>：差异表达、生存分析 — 从预计算 JSON 中查询，Agent 的智能体现在"选什么基因、怎么解释结果"，而非"跑什么统计方法"。</p>
+      <p><strong>Layer 🟡 降级计算</strong>：缓存未命中时 — 简单的 t-test / correlation 用 Python 实时算，复杂分析（Cox）标记"数据不可用"触发 F4 恢复。</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>关键设计原则</h3>
+  <div class="mockup">
+    <div class="mockup-header">Agent 不区分"真/模拟"——它始终调用同一个工具接口</div>
+    <div class="mockup-body">
+      <div style="font-family:monospace;font-size:13px;line-height:1.6;">
+        <div style="background:#e3f2fd;padding:8px;border-radius:4px;margin:4px 0;">
+          Agent 调用: <code>tool("survival_analysis", {"gene": "CSTB"})</code>
+        </div>
+        <div style="text-align:center;">⬇</div>
+        <div style="background:#fff3e0;padding:8px;border-radius:4px;margin:4px 0;">
+          工具内部判断: CSTB 在缓存中? → <strong>YES</strong> → 读缓存 JSON → 返回<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TP53 在缓存中? → <strong>YES</strong> → 读缓存 JSON → 返回<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;EGFR 在缓存中? → <strong>NO</strong> → F4 恢复: "此基因无预计算数据"
+        </div>
+      </div>
+      <p style="margin-top:12px;color:#666;font-size:13px;">Agent 的 <strong>智能</strong> 体现在：从 LiteratureReview 的 hypotheses 中决定"应该分析什么"，而非"R 代码怎么写"。工具是黑盒。</p>
+    </div>
+  </div>
+</div>

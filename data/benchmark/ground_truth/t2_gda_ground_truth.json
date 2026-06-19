@@ -1,0 +1,86 @@
+{
+  "pairs": [
+    {
+      "gene": "CSTB",
+      "disease": "Colorectal Cancer",
+      "association": "associated",
+      "confidence": "high",
+      "evidence_sources": {
+        "DisGeNET": "gene-disease association score: 0.3 (text-mining + curated)",
+        "Open_Targets": "overall association score: moderate (literature + RNA expression)",
+        "ITIP_CSTB": "logFC=2.3 in TCGA-COAD tumor vs normal, HR=1.42 (unfavorable)"
+      },
+      "_note": "Dual-source verified. ITIP/CSTB analysis confirms."
+    },
+    {
+      "gene": "TP53",
+      "disease": "Colorectal Cancer",
+      "association": "associated",
+      "confidence": "high",
+      "evidence_sources": {
+        "DisGeNET": "gene-disease association score: 1.0 (curated + text-mining)",
+        "Open_Targets": "overall association score: high (genetic associations + somatic mutations)",
+        "TCGA": "mutated in ~55% of CRC cases (TCGA-COAD)"
+      },
+      "_note": "Dual-source verified. Most commonly mutated gene in CRC."
+    },
+    {
+      "gene": "CD274",
+      "disease": "Colorectal Cancer",
+      "association": "associated",
+      "confidence": "moderate",
+      "evidence_sources": {
+        "DisGeNET": "gene-disease association score: 0.1 (text-mining)",
+        "Open_Targets": "overall association score: moderate (literature, affects pathway)",
+        "_note": "PD-L1 expression is a biomarker in MSI-H CRC (KEYNOTE trials)"
+      },
+      "_note": "Single-source mainly. Association is context-dependent (MSI-H subtype)."
+    },
+    {
+      "gene": "KRAS",
+      "disease": "Colorectal Cancer",
+      "association": "associated",
+      "confidence": "high",
+      "evidence_sources": {
+        "DisGeNET": "gene-disease association score: 1.0 (curated + text-mining)",
+        "Open_Targets": "overall association score: high (genetic associations + clinical trials)",
+        "CRYSTAL": "KRAS WT predicts cetuximab response (NEJM 2009)"
+      },
+      "_note": "Dual-source verified. Key predictive biomarker for anti-EGFR therapy."
+    },
+    {
+      "gene": "BRAF",
+      "disease": "Colorectal Cancer",
+      "association": "associated",
+      "confidence": "high",
+      "evidence_sources": {
+        "DisGeNET": "gene-disease association score: 0.8 (curated + text-mining)",
+        "Open_Targets": "overall association score: high (somatic mutations + prognostic biomarker)",
+        "TCGA": "V600E mutation in ~8-10% of CRC, poor prognosis"
+      },
+      "_note": "Dual-source verified. BRAF V600E is a known poor-prognosis marker in CRC."
+    },
+    {
+      "gene": "XYLT2",
+      "disease": "Glioblastoma",
+      "association": "unknown",
+      "confidence": "low",
+      "evidence_sources": {
+        "DisGeNET": "no known association (score < 0.01)",
+        "Open_Targets": "no known association"
+      },
+      "_note": "Negative control case — no published evidence for this association. Tests agent's ability to report 'no evidence found'."
+    }
+  ],
+  "meta": {
+    "sources": ["DisGeNET", "Open Targets"],
+    "confidence_levels": {
+      "high": "Both sources agree — primary metric",
+      "moderate": "Single source only — secondary reference",
+      "low": "Sources disagree or no evidence — excluded from primary metric"
+    },
+    "created": "2026-06-18",
+    "status": "READY — 6 pairs (5 positive + 1 negative control), 4 high-confidence, 1 moderate, 1 low",
+    "declaration": "GT limited by shared biases of both databases (more comprehensive for well-studied genes/diseases)."
+  }
+}

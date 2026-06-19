@@ -1,0 +1,112 @@
+<h2>问题 1：R 代码集成方式</h2>
+<p class="subtitle">AnalysisAgent 的工具内部如何执行生物医学分析（差异表达、生存分析、免疫关联、药物筛选）？</p>
+
+<div class="section">
+  <h3>三种路线对比</h3>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Python subprocess → Rscript temp.R</h3>
+      <p>每次分析写临时 .R 文件 → subprocess 调 Rscript → 解析 stdout/RDS 输出</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4>
+          <ul>
+            <li>复用 ITIP/CSTB 已有的 R 代码（Phase C/E 脚本）</li>
+            <li>结果和已验证的 ITIP 计算完全一致</li>
+            <li>不需要额外依赖（R 4.5.2 已配置）</li>
+          </ul>
+        </div>
+        <div class="cons"><h4>Cons</h4>
+          <ul>
+            <li>每次运行 30-120s，面试 demo 体验差</li>
+            <li>Windows Rscript 偶发 segfault (Rule-R-001)</li>
+            <li>错误处理复杂：R 报错是纯文本，Python 难以结构化解析</li>
+            <li>需要确保临时文件不冲突（并发时有风险）</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>rpy2 桥接</h3>
+      <p>Python 直接调 R 函数：<code>rpy2.robjects.r('source("cox.R")')</code></p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4>
+          <ul>
+            <li>无临时文件，无 subprocess 开销</li>
+            <li>Python/R 之间直接传 DataFrame</li>
+            <li>错误可以抛 Python 异常</li>
+          </ul>
+        </div>
+        <div class="cons"><h4>Cons</h4>
+          <ul>
+            <li>rpy2 在 Windows 上安装极困难（需要编译 R_HOME）</li>
+            <li>内存占用大：嵌入式 R 进程常驻 500MB+</li>
+            <li>你现有的 ITIP/CSTB R 代码依赖特定 library 路径（D:/R/library），rpy2 不一定能正确初始化</li>
+            <li>违反 RULE-R-003：引入新依赖</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>预计算缓存 + 实时 Python 查询 <span class="label" style="background:#2e7d32;color:#fff;padding:2px 6px;">03- 推荐</span></h3>
+      <p>ITIP/CSTB 的分析结果已缓存为 JSON → Agent "工具调用" = 查询缓存 + Python 实时计算 + LLM 解释</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4>
+          <ul>
+            <li>Demo 秒级响应，不依赖 R 运行时</li>
+            <li>缓存数据已经过验证（ITIP Phase C/E 的结果）</li>
+            <li>Agent 的智能体现在"选什么方法、怎么解释"，而非"等 R 跑完"</li>
+            <li>符合 Rule-R-001：完全避免 Rscript segfault</li>
+          </ul>
+        </div>
+        <div class="cons"><h4>Cons</h4>
+          <ul>
+            <li>仅限于有缓存的分析 — 新的基因需要预计算</li>
+            <li>面试时需诚实说"核心分析是预计算的"</li>
+            <li>缓存数据需要一次性预计算脚本生成</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="mockup">
+    <div class="mockup-header">路线 C 的 Agent 工具调用流程</div>
+    <div class="mockup-body">
+      <div style="font-family:monospace;font-size:13px;line-height:1.8;">
+        <div style="background:#e8f5e9;padding:8px;border-radius:4px;margin:4px 0;">
+          <strong>Think:</strong> "要验证 CSTB 在 CRC 中是否差异表达"
+        </div>
+        <div style="text-align:center;color:#666;">▼</div>
+        <div style="background:#fff3e0;padding:8px;border-radius:4px;margin:4px 0;">
+          <strong>Act:</strong> tool_call("run_differential_expression", {<br>
+          &nbsp;&nbsp;"gene": "CSTB",<br>
+          &nbsp;&nbsp;"dataset": "TCGA-COAD"<br>
+          })
+        </div>
+        <div style="text-align:center;color:#666;">▼</div>
+        <div style="background:#f3e5f5;padding:8px;border-radius:4px;margin:4px 0;">
+          <strong>Observe:</strong> 工具内部：读缓存 JSON → 返回 "CSTB logFC=2.3, adj.P=1.2e-15"
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>我的推荐：<strong>C 为主 + A 为补充</strong></h3>
+  <p>核心分析（差异表达、生存分析、免疫关联、药物筛选）用 <strong>预计算缓存</strong>（路线 C）。但保留一个 <strong>轻量 subprocess 通道</strong>（路线 A）处理缓存未覆盖的情况：当 Agent 需要分析一个不在缓存中的新基因时，降级为简单的 Python pandas/scipy 计算（t-test、Spearman correlation），不调 R。</p>
+</div>

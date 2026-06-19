@@ -1,0 +1,47 @@
+gantt
+    title 总运行时间: 334秒 | Total Runtime: 334s
+    
+    dateFormat X
+    axisFormat %s
+
+    section Phase 1: 文献检索与假设生成
+    LiteratureAgent: 文献检索 (Literature Search)
+    : 多轮PubMed搜索 (Multi-round PubMed)
+    , 100, 50s
+    , 150, 50s
+    , 200, 62s
+    
+    section Phase 2: 编排与规划
+    OrchestrationAgent: LLM动态DAG规划 (LLM Dynamic DAG Planning)
+    : 生成4个分析节点 (Generate 4 Nodes)
+    , 262, 53s
+
+    section Phase 3: 并行分析执行
+    AnalysisAgent: 差异表达分析 (DEG Analysis)
+    : 执行计算 (Execute)
+    , 315, 25s
+    , 340, 25s
+    , 365, 27s
+    
+    AnalysisAgent: 生存分析 (Survival Analysis)
+    : 执行计算 (Execute)
+    , 315, 30s
+    , 345, 32s
+    
+    AnalysisAgent: 药物敏感性分析 (Drug Sensitivity)
+    : 执行计算 (Execute)
+    , 315, 20s
+    , 335, 25s
+    , 360, 32s
+    
+    AnalysisAgent: 免疫相关性分析 (Immune Correlation)
+    : ⚠️ 降级/缓存缺失 (Degraded/Missing Cache)
+    , 315, 77s
+
+    section Phase 4: 报告生成
+    ReportAgent: 结构化报告生成 (Structured Report Gen)
+    : 整合数据 (Integrate Data)
+    , 392, 15s
+    , 407, 15s
+    : 撰写6大章节 (Write 6 Sections)
+    , 422, 20s

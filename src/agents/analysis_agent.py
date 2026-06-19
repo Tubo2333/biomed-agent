@@ -23,8 +23,6 @@ from src.agents.s3_types import (
 )
 from src.tools.tcga_tools import TCGADataAccessor, CacheMissError, _check_method_compatibility
 from src.tools.survival_tools import SurvivalTools
-from src.tools.drug_tools import DrugTools
-from src.tools.immune_tools import ImmuneTools
 
 logger = logging.getLogger(__name__)
 

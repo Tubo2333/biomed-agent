@@ -93,7 +93,9 @@ class TCGADataAccessor:
     """
 
     def __init__(self, cache_index_path: str = "data/cache/analysis_cache_index.json") -> None:
-        self._cache_index_path = Path(cache_index_path)
+        self._cache_index_path = Path(cache_index_path).resolve()
+        # Project root is three levels up from data/cache/analysis_cache_index.json
+        self._project_root = self._cache_index_path.parent.parent.parent
         self._index: CacheIndex = self._load_index()
         # Cache for loaded analysis data: (gene, analysis_type, dataset) → result dict
         self._cache: dict[tuple[str, str, str], dict[str, Any]] = {}
@@ -190,7 +192,7 @@ class TCGADataAccessor:
         if cached_analysis is None:
             return None
 
-        cache_file = Path(cached_analysis.file)
+        cache_file = self._project_root / cached_analysis.file
         if not cache_file.exists():
             logger.warning("Cache file missing: %s", cache_file)
             return None
@@ -225,7 +227,7 @@ class TCGADataAccessor:
         if ds is None:
             raise CacheMissError(f"Unknown dataset: {dataset}")
 
-        expr_path = Path(ds.expression_matrix)
+        expr_path = self._project_root / ds.expression_matrix
         if not expr_path.exists():
             raise CacheMissError(f"Expression matrix not found: {expr_path}")
 

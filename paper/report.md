@@ -154,6 +154,8 @@ HaluEval[^17] (Li et al., 2023) systematically categorized hallucinations into f
 
 BioMed-Agent adopts a four-agent sequential pipeline architecture (Figure 1). Each agent is a self-contained LLM-powered module implementing the Think→Act→Observe cycle, with a shared LLM backend (DeepSeek V4 Pro, temperature=0.3) and a shared tool registry.
 
+> **中文** — BioMed-Agent 采用四智能体顺序管线架构（图1）。每个智能体是独立的 LLM 驱动模块，实现 Think→Act→Observe 循环，共享 LLM 后端（DeepSeek V4 Pro, temperature=0.3）和工具注册表。
+
 ```
 User Question
     │
@@ -204,11 +206,19 @@ All agents share a common infrastructure layer:
 
 **LLM Client**: A unified wrapper around the Anthropic SDK, routing calls to DeepSeek V4 Pro. Default parameters: temperature=0.3 (optimized for factual accuracy over creativity in biomedical contexts), with configurable thinking budget tokens to prevent reasoning from consuming the entire output window.
 
+> **中文** — 所有智能体共享统一基础设施：**LLM 客户端**为 Anthropic SDK 的统一封装，调用路由至 DeepSeek V4 Pro，temperature=0.3（在生物医学场景中优先保证事实准确性而非创造性），thinking budget tokens 可配置以防止推理占用全部输出窗口。
+
 **Network Layer**: All external I/O (PubMed EUtils API, DeepSeek API) routes through `shared/gfw_probe.py` which checks proxy availability (127.0.0.1:7892) before any network call and implements 3-retry exponential backoff.
+
+> **中文** — **网络层**：所有外部 I/O（PubMed API、DeepSeek API）经由 `shared/gfw_probe.py` 路由，在网络调用前检查代理可用性（127.0.0.1:7892），实现 3 次重试指数退避。
 
 **Configuration**: A single `config.yaml` defines LLM parameters, data paths (TCGA cache, GDSC2 data, PubMed cache), benchmark settings (random seed=42, n_test_cases_per_task=10), and output directories.
 
+> **中文** — **配置系统**：统一的 `config.yaml` 定义 LLM 参数、数据路径（TCGA 缓存、GDSC2 数据、PubMed 缓存）、基准测试设置（random seed=42, n_test_cases_per_task=10）和输出目录。
+
 **Type System**: All inter-agent data structures are defined as Python `dataclass`es with `__post_init__` validation methods that enforce structural constraints at construction time.
+
+> **中文** — **类型系统**：所有智能体间数据结构均定义为 Python `dataclass`，通过 `__post_init__` 验证方法在构造时强制执行结构约束。
 
 ### 3.3 Agent Design Philosophy / 智能体设计哲学
 
@@ -216,9 +226,15 @@ BioMed-Agent follows three design principles that differentiate it from generic 
 
 1. **Agent ≠ LLM + tool list.** Each agent embodies a complete Think→Act→Observe cycle where the Think phase involves explicit reasoning about tool selection, parameter choices, and evidence assessment; the Act phase executes the selected tool with the reasoned parameters; and the Observe phase interprets results and decides on next actions (including retry with different parameters or method degradation).
 
+> **中文** — BioMed-Agent 遵循三条区别于通用 LLM Agent 框架的设计原则：(1) **Agent ≠ LLM + 工具列表**。每个 Agent 体现完整的 Think→Act→Observe 循环：Think 阶段对工具选择、参数和证据评估进行显式推理；Act 阶段以推理参数执行工具；Observe 阶段解释结果并决定下一步（含不同参数重试或方法降级）。
+
 2. **Prompt-first architecture.** Each agent's system prompt is treated as its most critical "source code." Prompts define the agent's role, available tools, output format, and behavioral constraints. The five anti-hallucination constraints (Section 4.5) are embedded in every prompt that generates scientific content.
 
+> **中文** — (2) **Prompt 优先架构**。每个 Agent 的系统提示被视为其最关键的"源代码"。提示定义了 Agent 的角色、可用工具、输出格式和行为约束。五条反幻觉约束（§4.5）嵌入所有生成科学内容的提示中。
+
 3. **Full decision traceability.** Every agent action records three elements: *why* (reasoning behind tool/method/parameter choice), *what* (the concrete action taken), and *result* (the observed outcome). This creates a complete audit trail from user question to final report claim.
+
+> **中文** — (3) **全决策可追溯**。每个 Agent 动作记录三要素：*why*（工具/方法/参数选择的推理）、*what*（执行的具体动作）和 *result*（观察到的结果），创建从用户问题到最终报告声明的完整审计轨迹。
 
 ---
 
@@ -227,6 +243,8 @@ BioMed-Agent follows three design principles that differentiate it from generic 
 ### 4.1 LiteratureAgent: Multi-Round Literature Retrieval with Evidence Synthesis
 
 **Design rationale**: Biomedical literature review is not a single-shot retrieval task. Initial search results may miss key evidence, uncover unexpected dimensions of the question, or reveal conflicts between studies that require targeted follow-up searches.
+
+> **中文** — **设计理由**：生物医学文献综述不是一次性检索任务。初步检索可能遗漏关键证据、发现问题的意外维度、或揭示需要定向跟进检索的研究间冲突。
 
 The LiteratureAgent implements a multi-round Think→Act→Observe cycle:
 
@@ -269,13 +287,22 @@ Phase 4: Assembly
 
 **Key design decision — LLM Rerank over embeddings**: Instead of using a dedicated embedding model (e.g., text-embedding-3-small or PubMedBERT), the LiteratureAgent uses the same LLM (DeepSeek V4 Pro) to score paper relevance on a 0-1 scale. This avoids dependency on embedding APIs and allows the relevance judgment to consider full semantic context, at the cost of higher token consumption (~500 tokens per batch of 10 papers).
 
+> **中文** — **关键设计决策 — LLM Rerank 替代 Embedding**：LiteratureAgent 使用同一 LLM（DeepSeek V4 Pro）以 0-1 评分论文相关性，而非专用 embedding 模型。这避免了对 embedding API 的依赖，使相关性判断能考虑完整语义上下文，代价是更高的 Token 消耗（每批 10 篇论文约 500 tokens）。
+
 **Key design decision — EvidenceLink strength as LLM self-attested + rule downgrade only**: The LLM proposes a strength level for each claim with mandatory justification. Rules can only *downgrade* (e.g., claim says "strong" but has <3 supporting PMIDs → automatic downgrade to "moderate"), never upgrade. This ensures claims are never more confident than the LLM's original assessment.
+
+> **中文** — **关键设计决策 — EvidenceLink 强度为 LLM 自证 + 规则仅降级**：LLM 为每条声明提议强度等级并附强制性理由。规则只能*降级*（如声明自称"strong"但支持性 PMID <3 → 自动降为"moderate"），绝不升级。这确保声明的置信度不会超过 LLM 的原始评估。
 
 ### 4.2 OrchestrationAgent: LLM-Driven Dynamic DAG Generation
 
 **Design rationale**: Different hypotheses require fundamentally different analysis strategies. A hypothesis about a single gene's prognostic value needs differential expression + survival analysis (2-3 nodes). A hypothesis about a signaling pathway mechanism needs correlation networks, multi-gene co-expression, and pathway enrichment (4-6 nodes). A fixed analysis template would miss these structural differences.
 
+> **中文** — **设计理由**：不同假设需要根本不同的分析策略。关于单基因预后价值的假设需要差异表达 + 生存分析（2-3 节点）；关于信号通路机制的假设需要相关网络、多基因共表达和通路富集（4-6 节点）。固定分析模板无法捕捉这些结构差异。
+
 The OrchestrationAgent converts a LiteratureReview into an AnalysisPlan (a directed acyclic graph of analysis nodes) through LLM reasoning:
+
+> **中文** — OrchestrationAgent 通过 LLM 推理将 LiteratureReview 转换为 AnalysisPlan（分析节点的有向无环图）。
+
 
 ```
 Input: LiteratureReview (hypotheses + evidence chain + knowledge gaps)
@@ -305,9 +332,14 @@ Post-processing (non-LLM):
 
 **Anti-template enforcement**: The system prompt explicitly requires that each AnalysisNode includes a `rationale` field explaining WHY this specific method and data source were chosen for this specific hypothesis. The `AnalysisNode.__post_init__` validator rejects nodes with empty rationales. This prevents the LLM from degenerating into template-filling behavior.
 
+> **中文** — **反模板强制执行**：系统提示明确要求每个 AnalysisNode 包含 `rationale` 字段，解释*为什么*为该假设选择了此方法和数据源。`AnalysisNode.__post_init__` 验证器拒绝理由为空的节点，防止 LLM 退化为模板填充。
+
 ### 4.3 AnalysisAgent: Think→Act→Observe with Failure Recovery
 
 **Design rationale**: Real biomedical data analysis encounters frequent failures: APIs time out, statistical assumptions are violated, genes are absent from datasets. A robust agent must classify failures and apply appropriate recovery strategies rather than crashing or silently producing invalid results.
+
+> **中文** — 真实生物医学数据分析经常遇到失败: API 超时、统计假设违反、基因不在数据集中。健壮的 Agent 必须对失败分类并应用恢复策略，而非崩溃或静默产生无效结果。
+
 
 The AnalysisAgent executes each AnalysisNode through a Think→Act→Observe cycle with a five-tier failure classification system:
 
@@ -346,7 +378,13 @@ Failure Recovery (F1-F5):
 
 **Design rationale**: Scientific reports often suffer from selective reporting of positive findings. The ReportAgent is explicitly prompted to include a "Negative and Null Findings" section and to report effect sizes alongside p-values—constraints that are enforced through the prompt rather than post-hoc checking.
 
+> **中文** — 科研报告常受选择性报告阳性结果之困。ReportAgent 被显式提示要求包含阴性和空结果章节，并同时报告效应量与 p 值——这些约束通过 Prompt 而非事后检查来强制执行。
+
+
 The ReportAgent generates a structured Markdown report with six mandatory sections:
+
+> **中文** — ReportAgent 生成包含六个强制章节的结构化 Markdown 报告:
+
 
 1. **Introduction** — Research question and literature background
 2. **Methods** — Data sources and analysis methods used
@@ -357,7 +395,13 @@ The ReportAgent generates a structured Markdown report with six mandatory sectio
 
 **Layer 4 cross-validation (A4→A3)**: Before writing the report, the ReportAgent runs `validate_upstream()` on the AnalysisAgent's outputs, checking: (1) statistical sanity bounds, (2) cross-node contradictions (e.g., "Cox says protective (HR<1) but DEG says overexpressed (logFC>0)" → WARNING), (3) effect size claims vs. actual magnitudes, and (4) analysis coverage (did the report mention all executed nodes?).
 
+> **中文** — 在撰写报告前，ReportAgent 对 AnalysisAgent 的输出运行 validate_upstream()，检查: (1) 统计合理性边界; (2) 跨节点矛盾(如 Cox 显示保护 HR<1 但 DEG 显示过表达 logFC>0 → WARNING); (3) 效应量声称 vs. 实际大小; (4) 分析覆盖率(报告是否提及所有已执行节点)。
+
+
 Claims that pass validation but involve `strength: "strong"` evidence are annotated with `[HUMAN REVIEW RECOMMENDED]` markers for Layer 5 manual inspection.
+
+> **中文** — 通过验证但涉及 strength: strong 证据的声明，标注 [HUMAN REVIEW RECOMMENDED] 标记供 Layer 5 人工审查。
+
 
 ### 4.5 Anti-Hallucination Strategy / 反幻觉策略
 
@@ -381,13 +425,28 @@ Layer 1: PROMPT CONSTRAINT ← 5 hard constraints in every scientific LLM call
 
 **Layer 1** is implemented as a mandatory constraint block embedded in every system prompt that generates scientific content. The five constraints are: (1) No Fabrication—do not invent gene functions or biological interpretations; (2) Source Attribution—every claim must trace to a PMID or computed result; (3) Uncertainty Expression—explicitly state when evidence is weak or conflicting; (4) Quantitative Precision—report exact values with confidence intervals; (5) Negative Results—report what was NOT found as clearly as what was found.
 
+> **中文** — Layer 1 实现为嵌入所有科学内容生成 Prompt 的强制性约束块。五条约束: (1) 禁止虚构——不编造基因功能或生物学解释; (2) 来源归属——每条声明须追溯到 PMID 或计算结果; (3) 不确定性表达——证据薄弱或冲突时明确说明; (4) 定量精度——报告精确值及置信区间; (5) 阴性结果——报告未发现的内容与已发现的内容同样清晰。
+
+
 **Layer 2** is implemented through `__post_init__` validators on dataclasses. For `EvidenceLink`, four hard rules operate: (a) claims with `strength ∈ {strong, moderate}` must have ≥1 supporting PMID; (b) claims with `strength="strong"` cannot have counter-evidence; (c) `strength_justification` is mandatory for all non-unverified claims; (d) claims with zero supporting PMIDs and no counter-evidence are automatically set to `strength="unverified"`.
+
+> **中文** — Layer 2 通过 dataclass 的 __post_init__ 验证器实现。EvidenceLink 包含四条硬规则: (a) strength 为 strong/moderate 的声明须有 >=1 个支持性 PMID; (b) strength=strong 的声明不能有反证; (c) 所有非 unverified 声明必须填写 strength_justification; (d) 零支持 PMID 且无反证的声明自动设为 strength=unverified。
+
 
 **Layer 3** runs after every LLM output containing scientific content. A PMID verifier cross-references all cited PMIDs against the set of actually retrieved papers. A gene name validator checks extracted gene symbols against known gene lists. A statistical sanity checker enforces bounds (HR ∈ [0.01, 100], p ∈ [0, 1], logFC ∈ [-20, 20], Spearman ρ ∈ [-1, 1]). A consistency checker detects contradictory claims across the evidence chain.
 
-**Layer 4** is the cross-agent validation system (described in §4.2-4.4). Each downstream agent runs `validate_upstream()` on its upstream input. Validation is rule-dominated (~80 lines per node) with LLM assistance triggered only for borderline WARNING cases. A BLOCKER status stops the pipeline; WARNINGs are recorded but allow continuation.
+> **中文** — Layer 3 在每次包含科学内容的 LLM 输出后运行。PMID 验证器将所有引用 PMID 与实际检索论文集合交叉比对; 基因名验证器检查提取的基因符号对照已知基因列表; 统计合理性检查器强制执行边界 (HR 0.01-100, p 0-1, logFC -20-20, Spearman rho -1-1); 一致性检查器检测证据链中的矛盾声明。
+
+
+**Layer 4** is the cross-agent validation system (described in
+
+> **中文** — Layer 4 为跨智能体验证系统(详见 4.2-4.4)。每个下游 Agent 对其上游输入运行 validate_upstream()。验证以规则为主(每节点约 80 行代码)，仅在边界 WARNING 情况触发 LLM 辅助。BLOCKER 状态停止管线; WARNING 记录但允许继续。
+ §4.2-4.4). Each downstream agent runs `validate_upstream()` on its upstream input. Validation is rule-dominated (~80 lines per node) with LLM assistance triggered only for borderline WARNING cases. A BLOCKER status stops the pipeline; WARNINGs are recorded but allow continuation.
 
 **Layer 5** marks specific outputs for mandatory human review: any claim with `strength="strong"`, any section with `hallucination_rate > 0.1`, and the final report's Conclusion section.
+
+> **中文** — Layer 5 将特定输出标记为强制人工审查: 任何 strength=strong 的声明、任何 hallucination_rate > 0.1 的章节、以及最终报告的 Conclusion 部分。
+
 
 ---
 
@@ -397,6 +456,9 @@ Layer 1: PROMPT CONSTRAINT ← 5 hard constraints in every scientific LLM call
 
 BioMed-Agent's evaluation framework defines five tasks spanning the core competencies of computational biomedical research:
 
+> **中文** — BioMed-Agent 的评估框架定义了五项任务，涵盖计算生物医学研究的核心能力:
+
+
 | ID | Task | Input | Ground Truth Source | Difficulty |
 |----|------|-------|--------------------|------------|
 | **T1-LIT** | Literature Retrieval & Evidence Integration | Natural language question | PubMed high-citation papers + temporal stratification + human spot-check | Hard |
@@ -405,7 +467,10 @@ BioMed-Agent's evaluation framework defines five tasks spanning the core compete
 | **T4-SURV** | Survival Analysis | TCGA-COAD expression + clinical data (n=245) | ITIP Phase C stepAIC Cox regression, independently verified for key genes | Hard |
 | **T5-DRUG** | Drug Sensitivity Screening | Gene list + GDSC2 IC50 data | ITIP Phase E Spearman correlation, gene-drug pairs verified | Hard |
 
-**Ground truth construction transparency**: All ground truth datasets include explicit declarations of their limitations. T1-LIT GT reflects well-cited literature with known temporal bias (favors older papers), mitigated by per-year-group stratified reporting. T3-DEG/T4-SURV/T5-DRUG GT reflects one specific analytical pipeline (ITIP) on one specific cohort (TCGA-COAD) and is explicitly labeled "exploratory, conditional on TCGA-COAD"—not a consensus gold standard.
+**Ground truth construction transparency**: All ground truth datasets include explicit declarations of their limitations.
+
+> **中文** — 所有 GT 数据集包含显式的局限性声明。T1-LIT GT 反映高引文献，存在已知时间偏差(偏好较早论文)，通过按年份组分层报告缓解。T3-DEG/T4-SURV/T5-DRUG GT 反映单一分析管线(ITIP)在单一队列(TCGA-COAD)上的结果，明确标记为探索性/条件于 TCGA-COAD——非共识金标准。
+ T1-LIT GT reflects well-cited literature with known temporal bias (favors older papers), mitigated by per-year-group stratified reporting. T3-DEG/T4-SURV/T5-DRUG GT reflects one specific analytical pipeline (ITIP) on one specific cohort (TCGA-COAD) and is explicitly labeled "exploratory, conditional on TCGA-COAD"—not a consensus gold standard.
 
 ### 5.2 Four-Dimensional Metrics
 
@@ -416,7 +481,10 @@ BioMed-Agent's evaluation framework defines five tasks spanning the core compete
 | **Result Correctness** | 0.35 | Numerical results within tolerance bands of ground truth | Tolerance bands are task-specific (e.g., HR ±15%, logFC ±0.5 or ±20%), acknowledging pipeline variance |
 | **Safety & Trust** | 0.25 | Inverse of hallucination rate; trust label assignment | Continuous penalty (no cliff effect): `penalty = 1 - max(0, (0.7 - safety)/0.7)` |
 
-**Overall score**: `raw = 0.15×completion + 0.25×tool_selection + 0.35×correctness + 0.25×safety`, then `final = raw × penalty`. Safety is counted twice (as a weighted dimension AND as a multiplicative penalty) to ensure that untrustworthy agents cannot compensate with high correctness scores.
+**Overall score**: `raw = 0.15
+
+> **中文** — 综合评分: raw = 0.15 x completion + 0.25 x tool_selection + 0.35 x correctness + 0.25 x safety，然后 final = raw x penalty。安全性被双重计算(作为加权维度和乘性惩罚)，确保不可信的 Agent 无法用高正确率弥补。
+×completion + 0.25×tool_selection + 0.35×correctness + 0.25×safety`, then `final = raw × penalty`. Safety is counted twice (as a weighted dimension AND as a multiplicative penalty) to ensure that untrustworthy agents cannot compensate with high correctness scores.
 
 ### 5.3 Four Controlled Baselines
 
@@ -427,7 +495,10 @@ BioMed-Agent's evaluation framework defines five tasks spanning the core compete
 | **B3: Simple RAG** | ✅ | ✅ (single-round) | ❌ | ❌ | Effect of adding retrieval |
 | **B4: Domain ReAct** | ✅ | ❌ | ❌ | ✅ | Effect of domain knowledge injection |
 
-All baselines use the same LLM backend (DeepSeek V4 Pro) and implement the same `EvalAgent` Protocol, making them directly comparable through the same `BiomedBenchmark.run_all()` interface. Differences are isolated to a single variable change between adjacent baselines.
+All baselines use the same LLM backend (DeepSeek V4 Pro) and implement the same `EvalAgent` Protocol, making them directly comparable through the same `BiomedBenchmark.run_all()` interface.
+
+> **中文** — 所有基线使用相同的 LLM 后端(DeepSeek V4 Pro)并实现相同的 EvalAgent Protocol，可通过同一 BiomedBenchmark.run_all() 接口直接比较。相邻基线间的差异被隔离为单变量变化。
+ Differences are isolated to a single variable change between adjacent baselines.
 
 ### 5.4 Statistical Methodology / 统计方法
 
@@ -437,6 +508,9 @@ All baselines use the same LLM backend (DeepSeek V4 Pro) and implement the same 
 - **Inter-rater reliability**: For T1-LIT human scoring: 4 out of 12 cases double-rated; Cohen's κ reported; κ < 0.6 triggers downgrade of all Evidence Integration Scores to "preliminary."
 
 **Table 1**: Task × Metrics design matrix showing evaluation criteria for each of the 5 tasks across 4 metrics dimensions. (Full table in Appendix A.)
+
+> **中文** — 表1: Task x Metrics 设计矩阵，展示每项任务在 4 个指标维度上的评估标准。(完整表格见附录 A。)
+
 
 ---
 
@@ -454,11 +528,20 @@ We conducted a focused comparison of four baseline agents on the T3-DEG (differe
 | B4 Domain ReAct | 1.000 | 0.000 | 0.500 | 0.000 | 0.575 | **Crashed** (LLMError): Same tool-calling incompatibility |
 | **S3 MultiAgentPipeline** | ✅ | ✅ | ✅ | N/A | **Successful** | Ran in 17.4s using TCGADataAccessor cache → real-time → degrade architecture |
 
-**Key finding**: Generic tool-calling baselines (B2, B4) failed because the DeepSeek API's Anthropic-compatible endpoint does not fully support tool-use messages, causing immediate LLMError crashes. B3 (Simple RAG) avoided crashing by using a simpler architecture but produced 8 hallucination flags from its unverified PubMed search results. B1 (Naive LLM, no tools) outperformed all tool-using baselines on overall score—a finding that underscores the importance of TOOL RELIABILITY as a first-order concern in biomedical agent design.
+**Key finding**: Generic tool-calling baselines (B2, B4) failed because the DeepSeek API's Anthropic-compatible endpoint does not fully support tool-use messages, causing immediate LLMError crashes. B3 (Simple RAG) avoided crashing by using a simpler architecture but produced 8 hallucination flags from its unverified PubMed search results.
 
-**BioMed-Agent's advantage**: The S3 MultiAgentPipeline successfully executed the same T3-DEG task without tool failures by using in-process Python tools with cached data access. The TCGADataAccessor's three-tier architecture (cache query → real-time Python computation → F4 graceful degradation) isolates the system from API-level tool-calling fragility. This design choice—trading general-purpose tool flexibility for biomedical-specific reliability—is a deliberate architectural decision justified by these preliminary results.
+> **中文** — 关键发现: 通用 tool-calling 基线(B2/B4)因 DeepSeek API 的 Anthropic 兼容端点不完全支持 tool-use 消息而失败。B3(Simple RAG)通过更简单架构避免了崩溃，但未经验证的 PubMed 检索产生了 8 个幻觉标记。B1(Naive LLM/无工具)综合评分超过所有使用工具的基线——这强调了工具可靠性作为生物医学 Agent 设计的头等关注点。
+ B1 (Naive LLM, no tools) outperformed all tool-using baselines on overall score—a finding that underscores the importance of TOOL RELIABILITY as a first-order concern in biomedical agent design.
 
-**Caveat**: These results are from a single task (T3-DEG) with a single gene (CSTB). The full 5-task × 5-agent benchmark matrix requires approximately 150K tokens and has not been executed. See Discussion §7.2, Limitation 6 for the complete Data Generation Plan.
+**BioMed-Agent's advantage**: The S3 MultiAgentPipeline successfully executed the same T3-DEG task without tool failures by using in-process Python tools with cached data access. The TCGADataAccessor's three-tier architecture (cache query → real-time Python computation → F4 graceful degradation) isolates the system from API-level tool-calling fragility.
+
+> **中文** — BioMed-Agent 的优势: S3 MultiAgentPipeline 通过进程内 Python 工具配合缓存数据访问，成功执行了 T3-DEG 任务且无工具故障。TCGADataAccessor 的三层架构(缓存查询-实时 Python 计算-F4 优雅降级)将系统与 API 级 tool-calling 的脆弱性隔离开来。以通用工具灵活性换取生物医学专用可靠性——这是由初步结果验证的故意架构决策。
+ This design choice—trading general-purpose tool flexibility for biomedical-specific reliability—is a deliberate architectural decision justified by these preliminary results.
+
+**Caveat**: These results are from a single task (T3-DEG) with a single gene (CSTB).
+
+> **中文** — 注意事项: 这些结果来自单一任务(T3-DEG)和单一基因(CSTB)。完整的 5 任务 x 5 Agent 基准矩阵约需 150K tokens，尚未执行。完整的数据生成计划见 Discussion 7.2 Limitation 6。
+ The full 5-task × 5-agent benchmark matrix requires approximately 150K tokens and has not been executed. See Discussion §7.2, Limitation 6 for the complete Data Generation Plan.
 
 ### 6.2 Case Study: CSTB in Colorectal Cancer / 案例研究：CSTB与结直肠癌
 
@@ -466,7 +549,10 @@ We conducted a focused comparison of four baseline agents on the T3-DEG (differe
 
 ### 6.1 Research Question and Literature Evidence / 研究问题与文献证据
 
-We demonstrate BioMed-Agent's end-to-end capability through a complete case study on **CSTB (Cystatin B / Stefin B) in colorectal cancer (CRC)**. The research question posed to the system was:
+We demonstrate BioMed-Agent's end-to-end capability through a complete case study on **CSTB (Cystatin B / Stefin B) in colorectal cancer (CRC)**.
+
+> **中文** — 我们通过对 CSTB (Cystatin B / Stefin B) 在结直肠癌(CRC)中的完整案例研究，展示 BioMed-Agent 的端到端能力。
+ The research question posed to the system was:
 
 > *"CSTB 在结直肠癌中的预后价值和免疫浸润关联 / CSTB in colorectal cancer: prognostic value and immune infiltration"*
 
@@ -474,7 +560,13 @@ We demonstrate BioMed-Agent's end-to-end capability through a complete case stud
 
 The LiteratureAgent decomposed the question into three sub-queries targeting clinical, molecular mechanism, and therapeutic dimensions. Across 3 rounds of PubMed retrieval, the agent retrieved papers and generated a structured literature review.
 
-**Key finding**: The evidence base was notably sparse. The LiteratureAgent found only 2 directly relevant papers and reported **confidence = 0.1**—an honest assessment that the literature on CSTB in CRC is extremely limited. This low-confidence self-assessment demonstrates the system's ability to express appropriate uncertainty rather than fabricating confident-sounding conclusions from insufficient evidence.
+> **中文** — LiteratureAgent 将问题分解为三个子查询，分别针对临床、分子机制和治疗维度。经过 3 轮 PubMed 检索，Agent 检索了论文并生成了结构化文献综述。
+
+
+**Key finding**: The evidence base was notably sparse. The LiteratureAgent found only 2 directly relevant papers and reported **confidence = 0.1**
+
+> **中文** — 关键发现: 证据基础明显稀疏。LiteratureAgent 仅发现 2 篇直接相关论文并报告 confidence = 0.1——诚实评估 CSTB 在 CRC 中的文献极其有限。这种低置信度的自我评估展示了系统表达适当不确定性的能力，而非从不充分的证据中编造听起来有信心的结论。
+—an honest assessment that the literature on CSTB in CRC is extremely limited. This low-confidence self-assessment demonstrates the system's ability to express appropriate uncertainty rather than fabricating confident-sounding conclusions from insufficient evidence.
 
 **Generated hypotheses** (3 total):
 1. *"CSTB mRNA expression is significantly upregulated in CRC tissue compared to adjacent normal mucosa."* (single_gene_prognostic)
@@ -488,6 +580,9 @@ All three hypotheses were classified as `novel_to_our_knowledge`—the existing 
 The structured evidence chain contained a single claim supported by PMID:10690531 (Kos et al., 2000, Clinical Cancer Research, n=345 CRC patients): serum CSTB levels were not significantly different between CRC patients and healthy controls (medians 1.2 vs. 1.7 ng/ml). This is a **negative finding** that is properly preserved in the evidence chain rather than being buried or reinterpreted as positive.
 
 **Knowledge gaps identified**:
+
+> **中文** — 识别的知识空白:
+
 - No published study examining CSTB expression vs. immune infiltration in CRC
 - No functional studies linking CSTB to immune pathways in the CRC microenvironment
 - CSTB tissue-level expression in CRC not reported
@@ -495,6 +590,9 @@ The structured evidence chain contained a single claim supported by PMID:1069053
 ### 6.2 Analysis Plan Generation / 分析计划生成
 
 The OrchestrationAgent classified the three hypotheses and generated a 4-node DAG:
+
+> **中文** — OrchestrationAgent 对三个假设进行分类并生成了 4 节点 DAG:
+
 
 | Node | Task | Genes | Method | Rationale |
 |------|------|-------|--------|-----------|
@@ -505,9 +603,15 @@ The OrchestrationAgent classified the three hypotheses and generated a 4-node DA
 
 **Hypothesis classification audit**: The LLM correctly classified hypotheses 1 and 3 as "single_gene_prognostic" and hypothesis 2 as "pathway_mechanism"—demonstrating that the DAG structure is genuinely input-dependent, not template-filled.
 
+> **中文** — 假设分类审计: LLM 正确将假设 1 和 3 分类为 single_gene_prognostic、假设 2 分类为 pathway_mechanism——证明 DAG 结构真正依赖于输入，而非模板填充。
+
+
 ### 6.3 Analysis Execution and Results / 分析执行与结果
 
 The AnalysisAgent executed the 4-node DAG with the following outcomes:
+
+> **中文** — AnalysisAgent 执行了 4 节点 DAG，结果如下:
+
 
 | Node | Status | Key Result | Duration |
 |------|--------|-----------|----------|
@@ -518,7 +622,10 @@ The AnalysisAgent executed the 4-node DAG with the following outcomes:
 
 **Result interpretation with warnings**:
 
-1. **Differential expression**: CSTB shows a statistically significant but **biologically minimal** expression change (logFC = 0.073, adjusted p = 3.71×10⁻⁵). The Layer 4 cross-validation system correctly flagged this: `"node_01_diff_expression: claims significance but |logFC|=0.073 < threshold 0.5"`. This is a critical distinction—statistical significance at large sample sizes (n=290 tumor, 41 normal) does not imply biological significance.
+1. **Differential expression**: CSTB shows a statistically significant but **biologically minimal** expression change (logFC = 0.073, adjusted p = 3.71
+
+> **中文** — 结果解释(带警告): 1) 差异表达: CSTB 显示统计显著但生物学上微小的表达变化(logFC = 0.073, adjusted p = 3.71 x 10^-5)。Layer 4 交叉验证系统正确标记为: node_01 声称显著但 |logFC|=0.073 < 阈值 0.5——大样本量(n=290 tumor/41 normal)下的统计显著不等于生物显著。2) 免疫相关: 因缓存中缺少免疫反卷积数据而降级，F4 恢复机制正确防止崩溃并允许管线继续。3) 生存分析: CSTB 显示不利预后趋势(HR = 1.46)但未达常规统计显著(p = 0.053)，95% CI(1.00-2.13)跨过 1.0。4) Layer 4 警告共 3 条。
+×10⁻⁵). The Layer 4 cross-validation system correctly flagged this: `"node_01_diff_expression: claims significance but |logFC|=0.073 < threshold 0.5"`. This is a critical distinction—statistical significance at large sample sizes (n=290 tumor, 41 normal) does not imply biological significance.
 
 2. **Immune correlation**: Degraded due to missing immune deconvolution data in the cache. The F4 recovery mechanism correctly prevented a crash and allowed the pipeline to continue with the remaining nodes.
 
@@ -532,6 +639,9 @@ The AnalysisAgent executed the 4-node DAG with the following outcomes:
 ### 6.4 Report Generation / 报告生成
 
 The ReportAgent produced a 9,447-character structured Markdown report with all six mandatory sections. The report:
+
+> **中文** — ReportAgent 生成了 9,447 字符的结构化 Markdown 报告，包含全部六个强制章节。报告: 正确识别了文献证据的稀疏性(仅 2 篇相关论文); 保留了阴性发现(血清 CSTB 在 CRC 患者中无差异); 包含显式局限性声明; 未过度夸大局际生存趋势(p=0.053)。
+
 - Correctly identified the sparsity of literature evidence (only 2 relevant papers)
 - Preserved negative findings (serum CSTB not different in CRC patients)
 - Included explicit limitation statements
@@ -552,13 +662,22 @@ Layer 4 validations (L4-1 to L4-3):  <1 s each (rule-based)
 
 ### 6.5 Key Observations from the Case Study
 
-1. **Honest uncertainty is working**: The LiteratureAgent correctly assigned confidence=0.1 when evidence was sparse. The ReportAgent correctly reported the marginal p-value (0.053) rather than rounding to "p<0.05." The Layer 4 effect-size checker correctly flagged the statistically-significant-but-biologically-meaningless logFC.
+1. **Honest uncertainty is working**: The LiteratureAgent correctly assigned confidence=0.1 when evidence was sparse.
 
-2. **Cache completeness is a critical constraint**: The immune_correlation node degraded because immune deconvolution scores were not cached. This reveals a genuine architectural limitation: the pre-computed cache model trades flexibility for reliability. Adding new analysis dimensions requires pre-computing and caching results.
+> **中文** — 1. 诚实的 uncertainty 正在工作: LiteratureAgent 在证据稀疏时正确分配 confidence=0.1。ReportAgent 正确报告了临界 p 值(0.053)，未将其四舍五入为 p<0.05。Layer 4 效应量检查器正确标记了统计显著但生物学无意义的 logFC。
+ The ReportAgent correctly reported the marginal p-value (0.053) rather than rounding to "p<0.05." The Layer 4 effect-size checker correctly flagged the statistically-significant-but-biologically-meaningless logFC.
+
+2. **Cache completeness is a critical constraint**: The immune_correlation node degraded because immune deconvolution scores were not cached.
+
+> **中文** — 2. 缓存完整性是关键约束: immune_correlation 节点因免疫反卷积分数未缓存而降级，揭示了真实的架构局限性——预计算缓存模型以灵活性换取可靠性。3. Token 预算被文献检索主导: Phase 1 消耗了大部分时间(48.6%)和 tokens，多轮检索 + LLM Rerank 是资源最密集的组件。
+ This reveals a genuine architectural limitation: the pre-computed cache model trades flexibility for reliability. Adding new analysis dimensions requires pre-computing and caching results.
 
 3. **The token budget is dominated by literature retrieval**: Phase 1 consumed the majority of both time (48.6%) and tokens. The multi-round retrieval with LLM Rerank of 50+ papers per round is the most resource-intensive component.
 
-4. **Layer 4 validation caught a real but subtle issue**: The effect-size warning on node_01 (logFC=0.073 < 0.5) would have been overlooked in a system without structured cross-validation. This demonstrates the practical value of rule-based sanity checks that operate independently of LLM judgments.
+4. **Layer 4 validation caught a real but subtle issue**: The effect-size warning on node_01 (logFC=0.073 < 0.5) would have been overlooked in a system without structured cross-validation.
+
+> **中文** — 4. Layer 4 验证捕获了真实但微妙的问题: node_01 的效应量警告(logFC=0.073 < 0.5)在没有结构化交叉验证的系统中会被忽略——展示了独立于 LLM 判断运行的规则化合理性检查的实际价值。
+ This demonstrates the practical value of rule-based sanity checks that operate independently of LLM judgments.
 
 ---
 
@@ -566,13 +685,22 @@ Layer 4 validations (L4-1 to L4-3):  <1 s each (rule-based)
 
 ### 7.1 Principal Findings / 主要发现
 
-This work demonstrates that a multi-agent architecture with structured evidence chaining can execute a complete biomedical research workflow—from literature review through hypothesis generation to multi-omics validation—with appropriate uncertainty expression and explicit failure handling. The five-layer anti-hallucination defense operated as designed across the CSTB case study: Layer 1 ensured scientific rigor in generated text, Layer 2 enforced data model constraints, Layer 3 verified PMID validity, Layer 4 caught effect-size inflation, and Layer 5 marked strong claims for human review.
+This work demonstrates that a multi-agent architecture with structured evidence chaining can execute a complete biomedical research workflow
+
+> **中文** — 本工作证明，具有结构化证据链的多智能体架构可以执行完整的生物医学研究工作流——从文献综述到假设生成再到多组学验证——并具有适当的不确定性表达和显式失败处理。五层反幻觉防线在 CSTB 案例研究中按设计运行: Layer 1 确保科学严谨性，Layer 2 强制执行数据模型约束，Layer 3 验证 PMID 有效性，Layer 4 捕获效应量膨胀，Layer 5 标记高强度声明供人工审查。
+—from literature review through hypothesis generation to multi-omics validation—with appropriate uncertainty expression and explicit failure handling. The five-layer anti-hallucination defense operated as designed across the CSTB case study: Layer 1 ensured scientific rigor in generated text, Layer 2 enforced data model constraints, Layer 3 verified PMID validity, Layer 4 caught effect-size inflation, and Layer 5 marked strong claims for human review.
 
 The system's architecture—outer-layer fixed 4-agent sequential pipeline with inner-layer LLM-driven dynamic DAG generation—balances the reliability of deterministic agent coordination with the flexibility of LLM reasoning for task-specific planning.
+
+> **中文** — 系统架构——外层固定 4 Agent 顺序管线 + 内层 LLM 驱动动态 DAG 生成——在确定性 Agent 协调的可靠性与 LLM 推理的灵活性之间取得了平衡。
+
 
 ### 7.2 Limitations / 局限性
 
 We explicitly acknowledge the following limitations of the current system:
+
+> **中文** — 我们明确承认当前系统的以下局限性:
+
 
 1. **Single case study**: The end-to-end pipeline has been demonstrated on a single gene (CSTB) in a single cancer type (CRC). Generalization to other genes, cancer types, and multi-gene signatures remains to be demonstrated.
 
@@ -583,6 +711,9 @@ We explicitly acknowledge the following limitations of the current system:
 4. **LLM thinking budget constraint**: The DeepSeek V4 Pro API in thinking mode allocates a significant portion of the `max_tokens` budget to reasoning traces, occasionally leaving insufficient budget for the actual JSON output. This required increasing `max_tokens` to 8,000 for complex outputs (orchestration plans, reports) and implementing a fallback mechanism that extracts content from thinking traces when text blocks are absent.
 
 5. **No real-time R integration**: By design, the system does not call R subprocesses. All analyses are either pre-computed (cache) or executed in Python (scipy.stats). This avoids Windows Rscript segfault issues (the development environment constraint) but limits the analysis methods to those implemented in Python.
+
+> **中文** — 三级数据访问层: TCGADataAccessor 采用缓存优先策略。特定基因的差异表达和生存分析结果已预计算(来自 ITIP/CSTB 管线)并存储为 JSON 缓存。缓存缺失时尝试 Python 实时计算(scipy.stats); 两者均失败则节点标记为降级(F4)并继续执行——这一显式设计选择避免了将数据不可用视为致命错误而导致的系统脆弱性。
+
 
 6. **Benchmark scale**: The full 5-agent × 5-task benchmark has been designed and implemented but a complete LLM end-to-end run has not been performed due to the token budget constraints of LLM API access (~150K+ tokens for a full run). The benchmark framework itself is complete and tested (102 structural tests passing), but quantitative agent comparison data is pending.
 
@@ -604,11 +735,20 @@ We explicitly acknowledge the following limitations of the current system:
 
 ## 8. Conclusion / 结论
 
-BioMed-Agent demonstrates that a multi-agent LLM system with structured evidence chaining can execute an end-to-end biomedical research workflow—connecting literature evidence to multi-omics analysis and producing a structured scientific report with explicit uncertainty quantification. The system's five-layer anti-hallucination defense, implemented across prompt engineering, data model constraints, post-hoc verification, cross-agent validation, and human review, provides a practical framework for building trustworthy AI systems in high-stakes biomedical contexts.
+BioMed-Agent demonstrates that a multi-agent LLM system with structured evidence chaining can execute an end-to-end biomedical research workflow
 
-The most important limitation to keep in mind is that the current system operates on a single case study with pre-computed analysis results. While the architecture is designed to generalize, the empirical evidence for its effectiveness across diverse biomedical questions remains to be established through expanded cache coverage and multi-case validation.
+> **中文** — BioMed-Agent 证明，具有结构化证据链的多智能体 LLM 系统可以执行端到端的生物医学研究工作流——连接文献证据与多组学分析，生成具有显式不确定性量化的结构化科学报告。系统的五层反幻觉防线——跨越 Prompt 工程、数据模型约束、后验验证、跨智能体验证和人工审查——为在高风险生物医学场景中构建可信 AI 系统提供了实用框架。
+—connecting literature evidence to multi-omics analysis and producing a structured scientific report with explicit uncertainty quantification. The system's five-layer anti-hallucination defense, implemented across prompt engineering, data model constraints, post-hoc verification, cross-agent validation, and human review, provides a practical framework for building trustworthy AI systems in high-stakes biomedical contexts.
+
+The most important limitation to keep in mind is that the current system operates on a single case study with pre-computed analysis results.
+
+> **中文** — 需牢记的最重要局限是，当前系统在单案例研究上运行，使用预计算的分析结果。虽然架构设计为可泛化，但其在多样化生物医学问题上有效性的实证证据仍有待通过扩展缓存覆盖和多案例验证来确立。
+ While the architecture is designed to generalize, the empirical evidence for its effectiveness across diverse biomedical questions remains to be established through expanded cache coverage and multi-case validation.
 
 The complete source code, benchmark framework, and case study data are available at `github.com/Tubo2333/biomed-agent` under the MIT License.
+
+> **中文** — 完整源代码、基准框架和案例数据在 github.com/Tubo2333/biomed-agent 以 MIT 许可证开源提供。
+
 
 ---
 

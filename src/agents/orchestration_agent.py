@@ -315,6 +315,8 @@ class OrchestrationAgent:
         else:
             gene_list = gene
 
+        task_input.get("dataset", "TCGA-COAD")
+
         if task_id == "T3-DEG":
             nodes = [
                 AnalysisNode(

@@ -291,6 +291,8 @@ class AnalysisAgent:
         self, node: AnalysisNode, upstream: dict, retry_count: int
     ) -> dict:
         """LLM Think phase: select tool and parameters."""
+        self._describe_tools()
+
         upstream_summary = json.dumps(
             {nid: list(out.keys()) for nid, out in upstream.items()},
             ensure_ascii=False,

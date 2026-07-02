@@ -10,6 +10,7 @@ node_modules/
 # Generated DOCX (local only, not uploaded)
 docs/*.docx
 design/*.docx
+paper/*.docx
 
 # Data outputs (runtime generated)
 data/demo_output/

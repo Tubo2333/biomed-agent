@@ -21,7 +21,7 @@ class TestLiteratureAgentStructural:
     def test_accepts_benchmark_task(self):
         """LiteratureAgent.run() accepts BenchmarkTask for S2 integration."""
         agent = LiteratureAgent(LLMClient(model="test", temperature=0.3))
-        _task = BenchmarkTask(
+        BenchmarkTask(
             task_id="T1-LIT", task_name="Test Literature Review",
             description="Review CSTB in CRC",
             input={"question": "CSTB in colorectal cancer prognosis"},

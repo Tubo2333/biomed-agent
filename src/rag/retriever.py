@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import time
 import urllib.parse
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -15,6 +16,8 @@ from typing import Optional
 
 from src.types import Paper, SearchQuery, SearchResult
 from src.utils.network import fetch_with_retry
+
+from src.utils.logger import get_logger
 
 logger = logging.getLogger(__name__)
 
@@ -48,10 +51,25 @@ class PubMedRetriever:
         )
     """
 
-    def __init__(self, cache_dir: str = DEFAULT_CACHE_DIR) -> None:
+    def __init__(self, cache_dir: str = DEFAULT_CACHE_DIR, ttl_hours: int = 168) -> None:
         self._cache_dir = Path(cache_dir)
         self._cache_dir.mkdir(parents=True, exist_ok=True)
-        logger.info("PubMedRetriever initialized, cache=%s", self._cache_dir)
+        self._ttl_hours = ttl_hours
+        self._hits = 0
+        self._misses = 0
+        self._struct_logger = get_logger("PubMedRetriever")
+        logger.info("PubMedRetriever initialized, cache=%s, ttl=%dh", self._cache_dir, ttl_hours)
+
+    @property
+    def cache_stats(self) -> dict[str, int]:
+        """Return cache hit/miss counts and rate."""
+        total = self._hits + self._misses
+        return {
+            "hits": self._hits,
+            "misses": self._misses,
+            "total": total,
+            "hit_rate": round(self._hits / total, 3) if total > 0 else 0.0,
+        }
 
     # ── Public API ──────────────────────────────────────────
 
@@ -79,10 +97,13 @@ class PubMedRetriever:
         cache_key = self._cache_key(query.query_string)
         cached = self._load_cache(cache_key)
         if cached is not None:
+            self._hits += 1
+            self._struct_logger.cache_hit(cache_key, size_bytes=len(cached))
             logger.info(
-                "Cache HIT for query: '%s...' (%d papers)",
+                "Cache HIT for query: '%s...' (%d papers) [hit_rate=%.1f%%]",
                 query.query_string[:80],
                 len(cached),
+                self.cache_stats["hit_rate"] * 100,
             )
             return SearchResult(
                 query=query,
@@ -90,6 +111,8 @@ class PubMedRetriever:
                 total_count=len(cached),
                 retrieval_round=retrieval_round,
             )
+        self._misses += 1
+        self._struct_logger.cache_miss(cache_key)
 
         # ── 2. esearch — 获取 PMID 列表 ──
         pmid_list, total_count = self._search_pmids(query)
@@ -315,10 +338,23 @@ class PubMedRetriever:
         return self._cache_dir / f"{cache_key}.json"
 
     def _load_cache(self, cache_key: str) -> Optional[list[Paper]]:
-        """加载缓存。返回 None 表示未命中。"""
+        """加载缓存。返回 None 表示未命中或已过期。"""
         path = self._cache_path(cache_key)
         if not path.exists():
             return None
+
+        # ── TTL 检查 ──
+        if self._ttl_hours > 0:
+            age_seconds = time.time() - path.stat().st_mtime
+            if age_seconds > self._ttl_hours * 3600:
+                logger.info(
+                    "Cache EXPIRED for key=%s (age=%.1fh > ttl=%dh), invalidating",
+                    cache_key,
+                    age_seconds / 3600,
+                    self._ttl_hours,
+                )
+                path.unlink(missing_ok=True)
+                return None
 
         try:
             with open(path, encoding="utf-8") as f:
